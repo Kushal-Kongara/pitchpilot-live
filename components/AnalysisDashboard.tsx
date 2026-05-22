@@ -1,34 +1,12 @@
 "use client";
 
 import ScoreCard from "./ScoreCard";
-
-const MOCK_RESULT = {
-  pitchScore: 78,
-  clarityScore: 72,
-  demoFlowScore: 81,
-  missing:
-    "You explain the product features, but the problem and target user are not clear enough.",
-  improvedPitch:
-    "Hackathon teams often build strong products but struggle to explain them clearly. PitchPilot Live helps teams practice by analyzing their slide and pitch together, then giving instant feedback on story, clarity, and judge readiness.",
-  judgeQuestions: [
-    "Who is your target user?",
-    "Why is this better than a normal chatbot?",
-    "How does this use multimodal AI?",
-    "What data is stored?",
-    "How would this scale after the hackathon?",
-  ],
-  checklist: [
-    "Start with the problem",
-    "Explain the target user",
-    "Show one strong demo moment",
-    "Mention Gemini clearly",
-    "End with impact",
-  ],
-};
+import type { AnalysisResult } from "@/lib/types";
 
 interface AnalysisDashboardProps {
   loading: boolean;
-  hasResult: boolean;
+  result: AnalysisResult | null;
+  error: string | null;
 }
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -39,7 +17,13 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Card({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div
       className={`rounded-2xl border border-white/5 bg-white/[0.03] p-5 ${className}`}
@@ -51,7 +35,8 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 
 export default function AnalysisDashboard({
   loading,
-  hasResult,
+  result,
+  error,
 }: AnalysisDashboardProps) {
   if (loading) {
     return (
@@ -61,12 +46,40 @@ export default function AnalysisDashboard({
           <div className="absolute inset-0 rounded-full border-t-2 border-blue-400 animate-spin" />
         </div>
         <p className="text-sm text-slate-400">Analyzing your pitch…</p>
-        <p className="text-xs text-slate-600">Checking clarity, story, and demo flow</p>
+        <p className="text-xs text-slate-600">
+          Checking clarity, story, and demo flow
+        </p>
       </div>
     );
   }
 
-  if (!hasResult) {
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 rounded-2xl border border-red-500/20 bg-red-500/5">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
+          <svg
+            className="h-5 w-5 text-red-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+            />
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-red-400">Analysis failed</p>
+        <p className="text-xs text-slate-500 text-center max-w-[260px]">
+          {error}
+        </p>
+      </div>
+    );
+  }
+
+  if (!result) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 rounded-2xl border border-dashed border-white/5">
         <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10">
@@ -94,31 +107,47 @@ export default function AnalysisDashboard({
     );
   }
 
-  const r = MOCK_RESULT;
-
   return (
     <div className="flex flex-col gap-6">
       {/* Score row */}
       <div>
         <SectionHeader>Scores</SectionHeader>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <ScoreCard title="Overall Pitch" score={r.pitchScore} />
-          <ScoreCard title="Clarity" score={r.clarityScore} />
-          <ScoreCard title="Demo Flow" score={r.demoFlowScore} />
+          <ScoreCard title="Overall Pitch" score={result.overallScore} />
+          <ScoreCard title="Clarity" score={result.clarityScore} />
+          <ScoreCard title="Demo Flow" score={result.demoFlowScore} />
         </div>
       </div>
 
-      {/* What's missing */}
+      {/* Main feedback */}
       <Card>
-        <SectionHeader>What&apos;s Missing</SectionHeader>
-        <p className="text-sm text-slate-300 leading-relaxed">{r.missing}</p>
+        <SectionHeader>Coaching Feedback</SectionHeader>
+        <p className="text-sm text-slate-300 leading-relaxed">
+          {result.mainFeedback}
+        </p>
+      </Card>
+
+      {/* Problem statement */}
+      <Card>
+        <SectionHeader>Problem Statement</SectionHeader>
+        <p className="text-sm text-slate-300 leading-relaxed">
+          {result.problemStatementQuality}
+        </p>
+      </Card>
+
+      {/* Visual feedback */}
+      <Card>
+        <SectionHeader>Visual / Slide Feedback</SectionHeader>
+        <p className="text-sm text-slate-300 leading-relaxed">
+          {result.visualFeedback}
+        </p>
       </Card>
 
       {/* Improved pitch */}
       <Card>
         <SectionHeader>Improved 30-Second Pitch</SectionHeader>
         <p className="text-sm text-slate-300 leading-relaxed italic">
-          &ldquo;{r.improvedPitch}&rdquo;
+          &ldquo;{result.improvedPitch}&rdquo;
         </p>
       </Card>
 
@@ -126,8 +155,11 @@ export default function AnalysisDashboard({
       <Card>
         <SectionHeader>Likely Judge Questions</SectionHeader>
         <ul className="flex flex-col gap-2">
-          {r.judgeQuestions.map((q, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-sm text-slate-300">
+          {result.judgeQuestions.map((q, i) => (
+            <li
+              key={i}
+              className="flex items-start gap-2.5 text-sm text-slate-300"
+            >
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-purple-400 text-[10px] font-bold">
                 {i + 1}
               </span>
@@ -141,8 +173,11 @@ export default function AnalysisDashboard({
       <Card>
         <SectionHeader>Final Demo Checklist</SectionHeader>
         <ul className="flex flex-col gap-2">
-          {r.checklist.map((item, i) => (
-            <li key={i} className="flex items-center gap-2.5 text-sm text-slate-300">
+          {result.checklist.map((item, i) => (
+            <li
+              key={i}
+              className="flex items-center gap-2.5 text-sm text-slate-300"
+            >
               <svg
                 className="h-4 w-4 shrink-0 text-emerald-400"
                 fill="none"
@@ -150,7 +185,11 @@ export default function AnalysisDashboard({
                 stroke="currentColor"
                 strokeWidth={2.5}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4.5 12.75l6 6 9-13.5"
+                />
               </svg>
               {item}
             </li>

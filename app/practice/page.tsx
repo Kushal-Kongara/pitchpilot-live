@@ -5,13 +5,31 @@ import Link from "next/link";
 import UploadBox from "@/components/UploadBox";
 import PitchInput from "@/components/PitchInput";
 import AnalysisDashboard from "@/components/AnalysisDashboard";
+import type { AnalysisResult, AnalyzeErrorResponse } from "@/lib/types";
+
+// Convert a File to a base64 string (data without the data-URL prefix)
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Strip "data:<mime>;base64," prefix
+      const base64 = dataUrl.split(",")[1];
+      if (!base64) reject(new Error("Failed to read file as base64"));
+      else resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function PracticePage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pitch, setPitch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [hasResult, setHasResult] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function handleFileSelect(file: File) {
     setImageFile(file);
@@ -20,22 +38,52 @@ export default function PracticePage() {
   }
 
   async function handleAnalyze() {
-    if (!pitch.trim() && !imageFile) return;
+    if (!pitch.trim() || !imageFile) return;
+
     setLoading(true);
-    setHasResult(false);
-    // Fake 1-second delay — swap for real API call later
-    await new Promise((r) => setTimeout(r, 1100));
-    setLoading(false);
-    setHasResult(true);
+    setResult(null);
+    setError(null);
+
+    try {
+      const imageBase64 = await fileToBase64(imageFile);
+
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pitch: pitch.trim(),
+          imageBase64,
+          mimeType: imageFile.type,
+        }),
+      });
+
+      const data = (await res.json()) as AnalysisResult | AnalyzeErrorResponse;
+
+      if (!res.ok) {
+        const errData = data as AnalyzeErrorResponse;
+        setError(errData.error ?? "Analysis failed. Please try again.");
+      } else {
+        setResult(data as AnalysisResult);
+      }
+    } catch (err) {
+      console.error("[PitchPilot] fetch error:", err);
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
-  const canAnalyze = pitch.trim().length > 0 || imageFile !== null;
+  // Require both pitch and image for a real multimodal analysis
+  const canAnalyze = pitch.trim().length > 0 && imageFile !== null;
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Nav */}
       <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between shrink-0">
-        <Link href="/" className="font-semibold text-white tracking-tight hover:opacity-80 transition-opacity">
+        <Link
+          href="/"
+          className="font-semibold text-white tracking-tight hover:opacity-80 transition-opacity"
+        >
           PitchPilot{" "}
           <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
             Live
@@ -53,7 +101,7 @@ export default function PracticePage() {
               Your Demo Materials
             </h1>
             <p className="text-sm text-slate-500">
-              Add a slide or screenshot and your pitch to get started.
+              Upload a slide or screenshot and paste your pitch to get coached.
             </p>
           </div>
 
@@ -75,7 +123,11 @@ export default function PracticePage() {
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
                   <circle
                     className="opacity-25"
                     cx="12"
@@ -98,7 +150,7 @@ export default function PracticePage() {
           </button>
 
           <p className="text-xs text-slate-600 text-center">
-            Add at least a pitch or a screenshot to analyze.
+            Both a screenshot and a pitch are required for multimodal analysis.
           </p>
         </div>
 
@@ -107,7 +159,7 @@ export default function PracticePage() {
           <h2 className="text-lg font-semibold text-white mb-6">
             Coaching Report
           </h2>
-          <AnalysisDashboard loading={loading} hasResult={hasResult} />
+          <AnalysisDashboard loading={loading} result={result} error={error} />
         </div>
       </div>
     </div>
