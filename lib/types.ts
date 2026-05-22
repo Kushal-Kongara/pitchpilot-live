@@ -20,3 +20,19 @@ export interface AnalyzeErrorResponse {
   error: string;
   raw?: string; // dev-only
 }
+
+// ── Live Coach ──────────────────────────────────────────────────────────────
+
+export interface LiveCoachResult {
+  primaryCue: string;
+  coachingBubbles: string[];
+  deliveryScore: number;
+  clarityWarning: string;
+  nextBestAction: string;
+}
+
+export interface LiveCoachRequest {
+  transcript: string;
+  imageBase64: string;
+  mimeType: string;
+}

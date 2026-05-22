@@ -89,7 +89,16 @@ export default function PracticePage() {
             Live
           </span>
         </Link>
-        <span className="text-xs text-slate-600">Practice Mode</span>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/live"
+            className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+            Live Coach Mode
+          </Link>
+          <span className="text-xs text-slate-600">Practice Mode</span>
+        </div>
       </nav>
 
       {/* Main layout */}

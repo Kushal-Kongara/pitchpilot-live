@@ -32,12 +32,21 @@ export default function Home() {
             Live
           </span>
         </span>
-        <Link
-          href="/practice"
-          className="text-sm text-slate-400 hover:text-white transition-colors"
-        >
-          Practice →
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/live"
+            className="flex items-center gap-1.5 text-sm text-red-400 hover:text-red-300 transition-colors"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+            Live Coach
+          </Link>
+          <Link
+            href="/practice"
+            className="text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Practice →
+          </Link>
+        </div>
       </nav>
 
       {/* Hero */}
@@ -72,7 +81,14 @@ export default function Home() {
           >
             Start Practice
           </Link>
-          <span className="text-sm text-slate-500">No sign-up required</span>
+          <Link
+            href="/live"
+            className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-6 py-3.5 text-sm font-semibold text-red-300 hover:bg-red-500/20 hover:border-red-500/50 transition-all duration-200"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+            Try Live Coach
+          </Link>
+          <span className="text-sm text-slate-500 sm:ml-2">No sign-up required</span>
         </div>
       </section>
 
