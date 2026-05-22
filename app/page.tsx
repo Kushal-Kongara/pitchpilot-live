@@ -1,65 +1,110 @@
-import Image from "next/image";
+import Link from "next/link";
+
+const steps = [
+  {
+    number: "01",
+    title: "Upload your visual",
+    description:
+      "Drop in a slide, demo screenshot, or product mockup. PitchPilot reads the visual context alongside your words.",
+  },
+  {
+    number: "02",
+    title: "Paste your pitch",
+    description:
+      "Dump your draft script or talking points. Rough is fine — that's exactly what we're here to fix.",
+  },
+  {
+    number: "03",
+    title: "Get coached",
+    description:
+      "Receive a scored report: clarity, demo flow, missing elements, an improved pitch, and the questions judges will ask.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex flex-col min-h-screen">
+      {/* Nav */}
+      <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between">
+        <span className="font-semibold text-white tracking-tight">
+          PitchPilot{" "}
+          <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            Live
+          </span>
+        </span>
+        <Link
+          href="/practice"
+          className="text-sm text-slate-400 hover:text-white transition-colors"
+        >
+          Practice →
+        </Link>
+      </nav>
+
+      {/* Hero */}
+      <section className="flex-1 flex flex-col items-center justify-center px-6 py-24 text-center">
+        {/* Badge */}
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1.5 text-xs text-blue-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+          AI-Powered Demo Coaching
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Headline */}
+        <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+          Pitch better.{" "}
+          <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Demo sharper.
+          </span>{" "}
+          Win the room.
+        </h1>
+
+        {/* Subtitle */}
+        <p className="mt-6 max-w-xl text-lg text-slate-400 leading-relaxed">
+          Upload your slide or demo screenshot, paste your pitch, and get
+          instant AI coaching on story clarity, demo flow, and judge readiness —
+          in seconds.
+        </p>
+
+        {/* CTA */}
+        <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center">
+          <Link
+            href="/practice"
+            className="rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-purple-500 transition-all duration-200 hover:shadow-blue-500/30 hover:scale-[1.02]"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Start Practice
+          </Link>
+          <span className="text-sm text-slate-500">No sign-up required</span>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* 3-step section */}
+      <section className="border-t border-white/5 px-6 py-20">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="text-center text-sm font-semibold uppercase tracking-widest text-slate-500 mb-12">
+            How it works
+          </h2>
+          <div className="grid gap-8 sm:grid-cols-3">
+            {steps.map((step) => (
+              <div
+                key={step.number}
+                className="rounded-2xl border border-white/5 bg-white/[0.03] p-6 hover:border-white/10 hover:bg-white/[0.05] transition-all duration-200"
+              >
+                <div className="mb-4 text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                  {step.number}
+                </div>
+                <h3 className="mb-2 font-semibold text-white">{step.title}</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 px-6 py-6 text-center text-xs text-slate-600">
+        PitchPilot Live — built for hackathons
+      </footer>
+    </main>
   );
 }
