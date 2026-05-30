@@ -99,6 +99,7 @@ export default function LiveCoach() {
   const [isThinking,    setIsThinking]    = useState(false);
   const [streamingCue,  setStreamingCue]  = useState(""); // partial primaryCue while streaming
   const [permError,     setPermError]     = useState<string | null>(null);
+  const [reqCount,      setReqCount]      = useState(0); // session API call counter
 
   // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -200,6 +201,7 @@ export default function LiveCoach() {
       isFetchingRef.current = false;
       setIsThinking(false);
       setStreamingCue("");
+      setReqCount((n) => n + 1);
       if (isActiveRef.current) {
         setTimeout(() => { void doCoachingCallRef.current(); }, 300);
       }
@@ -269,6 +271,7 @@ export default function LiveCoach() {
     }
     startSpeechRecognition();
     isActiveRef.current = true;
+    setReqCount(0);
     void doCoachingCallRef.current();
     setIsActive(true);
   }
@@ -348,7 +351,7 @@ export default function LiveCoach() {
           <h2 className="text-2xl font-extrabold text-slate-900">Start when you&apos;re ready.</h2>
           <p className="text-sm text-slate-500 leading-relaxed">
             Your camera fills the screen. PitchPilot Live reviews your posture, tracks your pacing, and drops
-            coaching recommendations as you speak — every 4 seconds.
+            coaching recommendations continuously as you speak.
           </p>
           {!hasSpeech && (
             <p className="text-xs text-primary font-medium">
@@ -448,6 +451,15 @@ export default function LiveCoach() {
 
         {/* Right: score + controls */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
+
+          {/* Free tier quota indicator — gemini-2.0-flash: 15 RPM, 1500 RPD */}
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 ${G_PILL}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${reqCount >= 1400 ? "bg-red-400" : reqCount >= 1000 ? "bg-yellow-400" : "bg-emerald-400"}`} />
+            <span className="text-[10px] font-bold text-white/70">
+              {reqCount}<span className="text-white/40">/1500</span>
+            </span>
+            <span className="text-[10px] text-white/40 font-medium">daily</span>
+          </div>
 
           {latest && (
             <div className={`flex items-center gap-2 px-3 py-1.5 ${G_PILL}`}>

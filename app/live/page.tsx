@@ -50,7 +50,7 @@ export default function LivePage() {
       {/* Footer note */}
       <div className="border-t border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50/50">
         <p className="text-xs text-slate-400 font-medium">
-          Camera frame + transcript sent to Gemini every 7 seconds for posture and pacing review. Nothing is stored.
+          Camera frame + transcript sent to Gemini continuously for posture and pacing review. Free tier: 1500 req/day. Nothing is stored.
         </p>
         <Link
           href="/practice"
