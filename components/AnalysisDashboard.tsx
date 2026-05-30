@@ -11,7 +11,7 @@ interface AnalysisDashboardProps {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+    <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
       {children}
     </h3>
   );
@@ -26,7 +26,7 @@ function Card({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-white/5 bg-white/[0.03] p-5 ${className}`}
+      className={`rounded-2xl border border-slate-250/70 bg-white p-5 shadow-sm hover:shadow-md hover:border-slate-300 transition-all duration-300 ${className}`}
     >
       {children}
     </div>
@@ -40,13 +40,13 @@ export default function AnalysisDashboard({
 }: AnalysisDashboardProps) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4">
+      <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
         <div className="relative h-12 w-12">
-          <div className="absolute inset-0 rounded-full border-2 border-blue-500/20" />
-          <div className="absolute inset-0 rounded-full border-t-2 border-blue-400 animate-spin" />
+          <div className="absolute inset-0 rounded-full border-2 border-orange-500/20" />
+          <div className="absolute inset-0 rounded-full border-t-2 border-orange-500 animate-spin" />
         </div>
-        <p className="text-sm text-slate-400">Analyzing your pitch…</p>
-        <p className="text-xs text-slate-600">
+        <p className="text-sm font-semibold text-slate-700 animate-pulse">Analyzing your pitch…</p>
+        <p className="text-xs text-slate-400">
           Checking clarity, story, and demo flow
         </p>
       </div>
@@ -55,10 +55,10 @@ export default function AnalysisDashboard({
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 rounded-2xl border border-red-500/20 bg-red-500/5">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20">
+      <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 rounded-2xl border border-red-500/20 bg-red-50">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 border border-red-200">
           <svg
-            className="h-5 w-5 text-red-400"
+            className="h-5 w-5 text-red-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -71,7 +71,7 @@ export default function AnalysisDashboard({
             />
           </svg>
         </div>
-        <p className="text-sm font-medium text-red-400">Analysis failed</p>
+        <p className="text-sm font-bold text-red-600">Analysis failed</p>
         <p className="text-xs text-slate-500 text-center max-w-[260px]">
           {error}
         </p>
@@ -81,10 +81,10 @@ export default function AnalysisDashboard({
 
   if (!result) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 rounded-2xl border border-dashed border-white/5">
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/5 border border-white/10">
+      <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/30">
+        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white border border-slate-200 shadow-sm text-slate-400">
           <svg
-            className="h-6 w-6 text-slate-500"
+            className="h-6 w-6 text-slate-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -97,10 +97,10 @@ export default function AnalysisDashboard({
             />
           </svg>
         </div>
-        <p className="text-sm font-medium text-slate-400">
+        <p className="text-sm font-bold text-slate-700">
           Your coaching report will appear here.
         </p>
-        <p className="text-xs text-slate-600 text-center max-w-[220px]">
+        <p className="text-xs text-slate-400 text-center max-w-[220px]">
           Upload a visual and paste your pitch, then click Analyze.
         </p>
       </div>
@@ -122,7 +122,7 @@ export default function AnalysisDashboard({
       {/* Main feedback */}
       <Card>
         <SectionHeader>Coaching Feedback</SectionHeader>
-        <p className="text-sm text-slate-300 leading-relaxed">
+        <p className="text-sm text-slate-650 leading-relaxed font-medium">
           {result.mainFeedback}
         </p>
       </Card>
@@ -130,7 +130,7 @@ export default function AnalysisDashboard({
       {/* Problem statement */}
       <Card>
         <SectionHeader>Problem Statement</SectionHeader>
-        <p className="text-sm text-slate-300 leading-relaxed">
+        <p className="text-sm text-slate-655 leading-relaxed">
           {result.problemStatementQuality}
         </p>
       </Card>
@@ -138,15 +138,15 @@ export default function AnalysisDashboard({
       {/* Visual feedback */}
       <Card>
         <SectionHeader>Visual / Slide Feedback</SectionHeader>
-        <p className="text-sm text-slate-300 leading-relaxed">
+        <p className="text-sm text-slate-650 leading-relaxed">
           {result.visualFeedback}
         </p>
       </Card>
 
       {/* Improved pitch */}
-      <Card>
+      <Card className="border-l-4 border-l-orange-500">
         <SectionHeader>Improved 30-Second Pitch</SectionHeader>
-        <p className="text-sm text-slate-300 leading-relaxed italic">
+        <p className="text-sm text-slate-900 leading-relaxed font-bold italic">
           &ldquo;{result.improvedPitch}&rdquo;
         </p>
       </Card>
@@ -154,13 +154,13 @@ export default function AnalysisDashboard({
       {/* Judge questions */}
       <Card>
         <SectionHeader>Likely Judge Questions</SectionHeader>
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2.5">
           {result.judgeQuestions.map((q, i) => (
             <li
               key={i}
-              className="flex items-start gap-2.5 text-sm text-slate-300"
+              className="flex items-start gap-2.5 text-sm text-slate-700 font-medium"
             >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-purple-400 text-[10px] font-bold">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-[10px] font-extrabold">
                 {i + 1}
               </span>
               {q}
@@ -172,25 +172,27 @@ export default function AnalysisDashboard({
       {/* Checklist */}
       <Card>
         <SectionHeader>Final Demo Checklist</SectionHeader>
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2.5">
           {result.checklist.map((item, i) => (
             <li
               key={i}
-              className="flex items-center gap-2.5 text-sm text-slate-300"
+              className="flex items-center gap-2.5 text-sm text-slate-700 font-medium"
             >
-              <svg
-                className="h-4 w-4 shrink-0 text-emerald-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4.5 12.75l6 6 9-13.5"
-                />
-              </svg>
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <svg
+                  className="h-3 w-3 shrink-0"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4.5 12.75l6 6 9-13.5"
+                  />
+                </svg>
+              </div>
               {item}
             </li>
           ))}

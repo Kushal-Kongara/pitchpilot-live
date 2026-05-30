@@ -36,3 +36,22 @@ export interface LiveCoachRequest {
   imageBase64: string;
   mimeType: string;
 }
+
+// ── Session Summary ─────────────────────────────────────────────────────────
+
+export interface SessionData {
+  transcript: string;
+  coachingHistory: LiveCoachResult[];
+  durationSeconds: number;
+}
+
+export interface SessionSummaryResult {
+  overallProgress: string;
+  finalScore: number;
+  topStrengths: string[];
+  persistentWeaknesses: string[];
+  improvedPitch: string;
+  priorityFixes: string[];
+  readyForDemo: boolean;
+  readinessStatement: string;
+}

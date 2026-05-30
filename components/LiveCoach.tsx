@@ -1,34 +1,29 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import type { LiveCoachResult } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import type { LiveCoachResult, SessionData } from "@/lib/types";
 
-// ── Web Speech API type declarations ────────────────────────────────────────
-// Not included in all TypeScript DOM lib configs; declared locally to be safe.
-
+// ── Web Speech API local type declarations ───────────────────────────────────
 interface SpeechRecognitionAlternative {
   readonly transcript: string;
   readonly confidence: number;
 }
-
 interface SpeechRecognitionResult {
   readonly isFinal: boolean;
   readonly length: number;
   item(index: number): SpeechRecognitionAlternative;
   [index: number]: SpeechRecognitionAlternative;
 }
-
 interface SpeechRecognitionResultList {
   readonly length: number;
   item(index: number): SpeechRecognitionResult;
   [index: number]: SpeechRecognitionResult;
 }
-
 interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number;
   readonly results: SpeechRecognitionResultList;
 }
-
 interface ISpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -39,11 +34,9 @@ interface ISpeechRecognition extends EventTarget {
   onerror: ((event: Event) => void) | null;
   onend: (() => void) | null;
 }
-
 interface ISpeechRecognitionConstructor {
   new (): ISpeechRecognition;
 }
-
 declare global {
   interface Window {
     SpeechRecognition?: ISpeechRecognitionConstructor;
@@ -51,228 +44,259 @@ declare global {
   }
 }
 
+// ── Types ────────────────────────────────────────────────────────────────────
 interface CoachingEntry {
   id: number;
   result: LiveCoachResult;
 }
 
-// ── Score colour helpers ─────────────────────────────────────────────────────
+// ── SSE event shapes ─────────────────────────────────────────────────────────
+interface SseToken  { t: string }
+interface SseDone   { done: true; r: LiveCoachResult }
+interface SseError  { error: string }
+type SseEvent = SseToken | SseDone | SseError;
 
-function scoreGradient(score: number): string {
-  if (score >= 80) return "from-emerald-400 to-teal-400";
-  if (score >= 60) return "from-blue-400 to-purple-400";
-  return "from-orange-400 to-red-400";
+// ── Glass tokens ─────────────────────────────────────────────────────────────
+const G_CARD = "bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl";
+const G_SM   = "bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl";
+const G_PILL = "bg-black/40 backdrop-blur-xl border border-white/10 rounded-full";
+const G_BTN  =
+  "bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-3.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition-all duration-150 select-none cursor-pointer";
+
+// ── Partial JSON helpers ─────────────────────────────────────────────────────
+// Extracts the partially-built "primaryCue" value as tokens stream in.
+function extractPartialCue(partial: string): string {
+  const m = /"primaryCue"\s*:\s*"([^"]*)/.exec(partial);
+  return m?.[1] ?? "";
 }
 
-function scoreBg(score: number): string {
-  if (score >= 80) return "border-emerald-500/30 bg-emerald-500/10";
-  if (score >= 60) return "border-blue-500/30 bg-blue-500/10";
-  return "border-orange-500/30 bg-orange-500/10";
-}
-
-// ── Component ────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────────────────────
 export default function LiveCoach() {
-  // ── DOM refs ────────────────────────────────────────────────────────────
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
+
+  // ── DOM refs ─────────────────────────────────────────────────────────────
+  const videoRef  = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // ── Live-session refs (never trigger re-render) ──────────────────────────
-  const streamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<ISpeechRecognition | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isFetchingRef = useRef(false);
-  // Mirror of transcript state — readable inside interval without stale closure
-  const transcriptRef = useRef("");
+  // ── Session refs ──────────────────────────────────────────────────────────
+  const streamRef       = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const recognitionRef  = useRef<ISpeechRecognition | null>(null);
+  const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isFetchingRef   = useRef(false);
+  const transcriptRef   = useRef("");
+  const manualTextRef   = useRef("");
+  const sessionStartRef = useRef(0); // timestamp ms
 
-  // ── UI state ────────────────────────────────────────────────────────────
-  const [isActive, setIsActive] = useState(false);
-  const [hasSpeech, setHasSpeech] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [interimText, setInterimText] = useState("");
-  // Fallback textarea when SpeechRecognition unavailable
-  const [manualText, setManualText] = useState("");
-  const manualTextRef = useRef("");
+  // ── UI state ──────────────────────────────────────────────────────────────
+  const [isActive,      setIsActive]      = useState(false);
+  const [isScreenShare, setIsScreenShare] = useState(false);
+  const [hasSpeech,     setHasSpeech]     = useState(false);
+  const [transcript,    setTranscript]    = useState("");
+  const [interimText,   setInterimText]   = useState("");
+  const [manualText,    setManualText]    = useState("");
+  const [entries,       setEntries]       = useState<CoachingEntry[]>([]);
+  const [isThinking,    setIsThinking]    = useState(false);
+  const [streamingCue,  setStreamingCue]  = useState(""); // partial primaryCue while streaming
+  const [permError,     setPermError]     = useState<string | null>(null);
 
-  const [entries, setEntries] = useState<CoachingEntry[]>([]);
-  const [isThinking, setIsThinking] = useState(false);
-  const [permError, setPermError] = useState<string | null>(null);
-
-  // ── Speech support detection (client only) ───────────────────────────────
+  // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     setHasSpeech(!!(window.SpeechRecognition ?? window.webkitSpeechRecognition));
   }, []);
 
-  // ── Cleanup on unmount ───────────────────────────────────────────────────
+  // Reattach stream when HUD mounts (new <video> element created)
   useEffect(() => {
-    return () => {
-      cleanupSession();
-    };
+    if (!isActive || !videoRef.current) return;
+    const src = screenStreamRef.current ?? streamRef.current;
+    if (src) videoRef.current.srcObject = src;
+  }, [isActive]);
+
+  // Reattach when source switches (camera ↔ screen)
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (isScreenShare && screenStreamRef.current) {
+      videoRef.current.srcObject = screenStreamRef.current;
+    } else if (streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [isScreenShare]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { cleanupSession(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── doCoachingCall stored in a ref so the interval always gets latest ────
-  // Pattern: reassign ref each render → interval reads fresh closure each tick.
+  // ── Coaching call (SSE streaming) — ref updated every render ─────────────
   const doCoachingCallRef = useRef<() => Promise<void>>(async () => {});
   doCoachingCallRef.current = async function doCoachingCall() {
     if (isFetchingRef.current) return;
-
-    const currentTranscript = hasSpeech
-      ? transcriptRef.current
-      : manualTextRef.current;
-
+    const text = hasSpeech ? transcriptRef.current : manualTextRef.current;
     const imageBase64 = captureFrame();
-
-    // Skip if nothing to send
-    if (!currentTranscript.trim() && !imageBase64) return;
+    if (!text.trim() && !imageBase64) return;
 
     isFetchingRef.current = true;
     setIsThinking(true);
+    setStreamingCue("");
 
     try {
-      const res = await fetch("/api/live-coach", {
+      const res = await fetch("/api/live-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transcript: currentTranscript.trim(),
-          imageBase64: imageBase64 ?? "",
-          mimeType: "image/jpeg",
-        }),
+        body: JSON.stringify({ transcript: text.trim(), imageBase64: imageBase64 ?? "", mimeType: "image/jpeg" }),
       });
 
-      if (res.ok) {
-        const data = (await res.json()) as LiveCoachResult;
-        setEntries((prev) => [
-          { id: Date.now(), result: data },
-          ...prev.slice(0, 4), // keep last 5 entries
-        ]);
-      } else {
-        console.error("[LiveCoach] API returned", res.status);
+      if (!res.ok || !res.body) {
+        console.error("[LiveCoach] stream HTTP error:", res.status);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let partialJson = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          if (!part.startsWith("data: ")) continue;
+          const jsonStr = part.slice(6).trim();
+          if (!jsonStr) continue;
+          try {
+            const event = JSON.parse(jsonStr) as SseEvent;
+
+            if ("t" in event && typeof event.t === "string") {
+              // Token chunk — extract partial primaryCue for live display
+              partialJson += event.t;
+              const partial = extractPartialCue(partialJson);
+              if (partial) setStreamingCue(partial);
+
+            } else if ("done" in event && event.done && "r" in event) {
+              // Complete result received
+              setEntries((prev) => [{ id: Date.now(), result: event.r }, ...prev.slice(0, 4)]);
+              setStreamingCue("");
+              setIsThinking(false);
+
+            } else if ("error" in event) {
+              console.error("[LiveCoach] SSE error:", event.error);
+              setIsThinking(false);
+              setStreamingCue("");
+            }
+          } catch {
+            // Incomplete SSE line — wait for more data
+          }
+        }
       }
     } catch (err) {
-      console.error("[LiveCoach] fetch error:", err);
+      console.error("[LiveCoach] SSE fetch:", err);
     } finally {
       isFetchingRef.current = false;
       setIsThinking(false);
+      setStreamingCue("");
     }
   };
 
-  // ── Capture current webcam frame as JPEG base64 ──────────────────────────
+  // ── Frame capture ─────────────────────────────────────────────────────────
   function captureFrame(): string | null {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState < 2) return null;
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    const ctx = canvas.getContext("2d");
+    const v = videoRef.current, c = canvasRef.current;
+    if (!v || !c || v.readyState < 2) return null;
+    c.width = v.videoWidth || 640;
+    c.height = v.videoHeight || 480;
+    const ctx = c.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
-    return dataUrl.split(",")[1] ?? null;
+    ctx.drawImage(v, 0, 0);
+    return c.toDataURL("image/jpeg", 0.75).split(",")[1] ?? null;
   }
 
-  // ── Session lifecycle ────────────────────────────────────────────────────
+  // ── Session lifecycle ─────────────────────────────────────────────────────
   function cleanupSession() {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     if (recognitionRef.current) {
       recognitionRef.current.onend = null;
-      try {
-        recognitionRef.current.stop();
-      } catch {
-        // already stopped
-      }
+      try { recognitionRef.current.stop(); } catch { /* already stopped */ }
       recognitionRef.current = null;
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    [screenStreamRef, streamRef].forEach((ref) => {
+      ref.current?.getTracks().forEach((t) => t.stop());
+      ref.current = null;
+    });
+    if (videoRef.current) videoRef.current.srcObject = null;
+  }
+
+  function startSpeechRecognition() {
+    if (!hasSpeech) return;
+    const API = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!API) return;
+    const rec = new API();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = "en-US";
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      let fin = "", interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) fin += t + " "; else interim += t;
+      }
+      if (fin) { transcriptRef.current += fin; setTranscript(transcriptRef.current); }
+      setInterimText(interim);
+    };
+    rec.onerror = (e: Event) => console.error("[LiveCoach] speech:", e);
+    rec.onend = () => { if (streamRef.current) { try { rec.start(); } catch { /* ignore */ } } };
+    rec.start();
+    recognitionRef.current = rec;
   }
 
   async function startLive() {
     setPermError(null);
     setEntries([]);
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: hasSpeech, // request mic only when we'll use speech API
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: hasSpeech });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      sessionStartRef.current = Date.now();
     } catch {
-      setPermError(
-        "Camera access denied. Allow camera permissions in your browser and try again."
-      );
+      setPermError("Camera access denied. Allow camera permissions in your browser and try again.");
       return;
     }
-
-    // Start SpeechRecognition if available
-    if (hasSpeech) {
-      const SpeechRecognitionAPI =
-        window.SpeechRecognition ?? window.webkitSpeechRecognition;
-      if (SpeechRecognitionAPI) {
-        const rec = new SpeechRecognitionAPI();
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.lang = "en-US";
-
-        rec.onresult = (event: SpeechRecognitionEvent) => {
-          let finalChunk = "";
-          let interim = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const text = event.results[i][0].transcript;
-            if (event.results[i].isFinal) finalChunk += text + " ";
-            else interim += text;
-          }
-          if (finalChunk) {
-            const updated = transcriptRef.current + finalChunk;
-            transcriptRef.current = updated;
-            setTranscript(updated);
-          }
-          setInterimText(interim);
-        };
-
-        rec.onerror = (e: Event) =>
-          console.error("[LiveCoach] speech error:", e);
-
-        // Auto-restart if recognition stops unexpectedly while session is live
-        rec.onend = () => {
-          if (streamRef.current) {
-            try {
-              rec.start();
-            } catch {
-              // ignore
-            }
-          }
-        };
-
-        rec.start();
-        recognitionRef.current = rec;
-      }
-    }
-
-    // Kick off coaching on a 7-second interval
-    intervalRef.current = setInterval(() => {
-      void doCoachingCallRef.current();
-    }, 7000);
-
+    startSpeechRecognition();
+    // 4s interval — fast enough to feel live, spaced enough to not overlap
+    intervalRef.current = setInterval(() => { void doCoachingCallRef.current(); }, 4000);
     setIsActive(true);
   }
 
   function stopLive() {
+    // Capture state before cleanup clears it
+    const capturedTranscript = transcript;
+    const capturedEntries = [...entries];
+    const durationSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
+
     cleanupSession();
     setIsActive(false);
+    setIsScreenShare(false);
     setInterimText("");
+    setStreamingCue("");
     isFetchingRef.current = false;
+
+    // Navigate to summary if there's something to show
+    if (capturedEntries.length > 0) {
+      try {
+        const sessionData: SessionData = {
+          transcript: capturedTranscript,
+          coachingHistory: capturedEntries.map((e) => e.result),
+          durationSeconds,
+        };
+        sessionStorage.setItem("pitchpilot_session", JSON.stringify(sessionData));
+        router.push("/summary");
+      } catch {
+        // sessionStorage unavailable (private mode, etc.) — stay on page
+      }
+    }
   }
 
   function clearTranscript() {
@@ -283,290 +307,271 @@ export default function LiveCoach() {
     setInterimText("");
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  async function startScreenShare() {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenStreamRef.current = stream;
+      const track = stream.getVideoTracks()[0];
+      if (track) track.onended = () => switchToCamera();
+      setIsScreenShare(true);
+    } catch { /* user cancelled */ }
+  }
+
+  function switchToCamera() {
+    screenStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenStreamRef.current = null;
+    setIsScreenShare(false);
+  }
+
+  // ── Derived ───────────────────────────────────────────────────────────────
   const latest = entries[0] ?? null;
+  // Show streaming partial cue while receiving, then snap to full result
+  const displayCue = streamingCue || latest?.result.primaryCue;
 
-  return (
-    <div className="flex flex-col gap-6">
-      {/* ── Video + Controls ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Video card */}
-        <div className="flex flex-col gap-3">
-          <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black aspect-video">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            {/* Status overlay */}
-            <div className="absolute top-3 left-3 flex items-center gap-2">
-              {isActive ? (
-                <span className="flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1 text-xs text-red-400 backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
-                  LIVE
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1 text-xs text-slate-500 backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
-                  READY
-                </span>
-              )}
-            </div>
-            {/* Thinking overlay */}
-            {isThinking && (
-              <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1 text-xs text-blue-300 backdrop-blur-sm">
-                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
-                Coaching…
-              </div>
-            )}
-            {/* Empty state */}
-            {!isActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/5 border border-white/10">
-                  <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-                  </svg>
-                </div>
-                <p className="text-sm text-slate-400">Camera preview will appear here</p>
-              </div>
-            )}
-          </div>
+  // ═══════════════════════════════════════════════════════════════════════════
+  // IDLE SCREEN
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (!isActive) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 py-12 px-6 text-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-50 border border-orange-100 shadow-sm">
+          <svg className="h-10 w-10 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        </div>
 
-          {/* Hidden canvas for frame capture */}
-          <canvas ref={canvasRef} className="hidden" />
-
-          {/* Controls */}
-          <div className="flex gap-3">
-            {!isActive ? (
-              <button
-                onClick={startLive}
-                className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 py-3 text-sm font-semibold text-white hover:from-blue-500 hover:to-purple-500 transition-all duration-200 shadow-lg shadow-blue-500/10"
-              >
-                Start Live Practice
-              </button>
-            ) : (
-              <button
-                onClick={stopLive}
-                className="flex-1 rounded-xl border border-red-500/30 bg-red-500/10 py-3 text-sm font-semibold text-red-400 hover:bg-red-500/20 transition-all duration-200"
-              >
-                Stop
-              </button>
-            )}
-            <button
-              onClick={clearTranscript}
-              disabled={!transcript && !manualText}
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400 hover:border-white/20 hover:text-slate-300 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              Clear
-            </button>
-          </div>
-
-          {/* Permission error */}
-          {permError && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-400 leading-relaxed">
-              {permError}
-            </div>
-          )}
-
-          {/* Speech API notice */}
+        <div className="flex flex-col gap-3 max-w-sm">
+          <h2 className="text-2xl font-extrabold text-slate-900">Start when you&apos;re ready.</h2>
+          <p className="text-sm text-slate-500 leading-relaxed">
+            Your camera fills the screen. PitchPilot watches, listens, and drops
+            streaming coaching cues as you speak — every 4 seconds.
+          </p>
           {!hasSpeech && (
-            <p className="text-xs text-amber-500/80 leading-relaxed">
-              Speech recognition not available in this browser. Type your pitch below as you speak.
+            <p className="text-xs text-orange-600 font-medium">
+              Speech recognition not available in this browser.
+              You&apos;ll type your script in the transcript bar.
             </p>
           )}
         </div>
 
-        {/* Transcript card */}
-        <div className="flex flex-col gap-3">
-          <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-5 flex flex-col gap-3 min-h-[200px]">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                Live Transcript
-              </h3>
-              {hasSpeech && isActive && (
-                <span className="flex items-center gap-1 text-[10px] text-blue-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-                  Listening
-                </span>
-              )}
-            </div>
+        {permError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-semibold text-red-600 max-w-sm leading-relaxed">
+            {permError}
+          </div>
+        )}
 
-            {hasSpeech ? (
-              <div className="flex-1 text-sm text-slate-300 leading-relaxed max-h-48 overflow-y-auto">
-                {transcript || interimText ? (
-                  <>
-                    <span>{transcript}</span>
-                    {interimText && (
-                      <span className="text-slate-500 italic">{interimText}</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-slate-600">
-                    {isActive
-                      ? "Start speaking — transcript appears here…"
-                      : "Transcript will appear once you start."}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <textarea
-                value={manualText}
-                onChange={(e) => {
-                  manualTextRef.current = e.target.value;
-                  setManualText(e.target.value);
-                }}
-                placeholder="Type your pitch as you say it — PitchPilot reads this alongside your camera…"
-                rows={6}
-                className="flex-1 resize-none bg-transparent text-sm text-slate-300 placeholder-slate-600 focus:outline-none leading-relaxed"
-              />
-            )}
+        <button
+          onClick={startLive}
+          className="rounded-2xl bg-slate-950 hover:bg-orange-600 px-10 py-4 text-sm font-bold text-white shadow-lg shadow-slate-900/10 hover:shadow-orange-500/20 transition-all duration-200 hover:scale-[1.03]"
+        >
+          Start Live Practice
+        </button>
+
+        <p className="text-xs text-slate-400">
+          Camera + mic accessed on start. Session summary generated on Stop.
+        </p>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FULL-SCREEN PRESENTER HUD
+  // ═══════════════════════════════════════════════════════════════════════════
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black">
+
+      {/* Video background */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Gradient vignette */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-black/5 to-black/75" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/30 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-black/30 to-transparent" />
+
+      {/* ══ TOP BAR ══════════════════════════════════════════════════════ */}
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+
+        {/* Left: branding + status */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className={`flex items-center gap-2 px-3.5 py-1.5 ${G_PILL}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+            <span className="text-xs font-extrabold text-white tracking-tight">
+              PitchPilot <span className="text-orange-400">Live</span>
+            </span>
           </div>
 
-          {/* Info blurb */}
-          <p className="text-xs text-slate-600 leading-relaxed px-1">
-            PitchPilot captures a camera frame every 7 seconds and sends it with your transcript for real-time coaching.
-          </p>
+          <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white ${G_PILL}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+            LIVE
+          </span>
+
+          {isScreenShare && (
+            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-300 ${G_PILL}`}>
+              🖥 Screen
+            </span>
+          )}
+
+          {/* Streaming indicator */}
+          {isThinking && (
+            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-300 ${G_PILL}`}>
+              <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              Streaming…
+            </span>
+          )}
+
+          {hasSpeech && !isThinking && (
+            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 ${G_PILL}`}>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Listening
+            </span>
+          )}
+        </div>
+
+        {/* Right: score + controls */}
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+
+          {latest && (
+            <div className={`flex items-center gap-2 px-3 py-1.5 ${G_PILL}`}>
+              <div className="relative h-7 w-7 shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 28 28">
+                  <circle cx="14" cy="14" r="11" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" fill="none" />
+                  <circle
+                    cx="14" cy="14" r="11"
+                    stroke="#f97316" strokeWidth="2.5" fill="none"
+                    strokeDasharray={69.12}
+                    strokeDashoffset={69.12 - (69.12 * latest.result.deliveryScore) / 100}
+                    strokeLinecap="round"
+                    className="transition-all duration-700"
+                  />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-white">
+                  {latest.result.deliveryScore}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-white/80">Score</span>
+            </div>
+          )}
+
+          {isScreenShare
+            ? <button onClick={switchToCamera} className={G_BTN}>📷 Camera</button>
+            : <button onClick={startScreenShare} className={G_BTN}>🖥 Screen</button>
+          }
+          <button onClick={clearTranscript} disabled={!transcript && !manualText}
+            className={`${G_BTN} disabled:opacity-30 disabled:cursor-not-allowed`}>
+            Clear
+          </button>
+          <button onClick={stopLive}
+            className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 rounded-full px-3.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/30 hover:text-red-200 transition-all duration-150 cursor-pointer">
+            ■ Stop
+          </button>
         </div>
       </div>
 
-      {/* ── Coaching output ───────────────────────────────────────────── */}
-      {(entries.length > 0 || isThinking) && (
-        <div className="flex flex-col gap-4">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-            Live Coaching
-          </h3>
+      {/* ══ PRIMARY CUE — center-left ════════════════════════════════════ */}
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 max-w-[42vw]">
+        {displayCue ? (
+          <div className={`p-5 ${G_CARD}`}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-2">
+              {streamingCue ? "⚡ Streaming" : "Coach"}
+            </p>
+            <p className="text-2xl sm:text-3xl font-black text-white leading-tight">
+              {displayCue}
+              {/* Blinking cursor while streaming */}
+              {streamingCue && (
+                <span className="inline-block w-0.5 h-7 bg-orange-400 ml-0.5 animate-pulse align-bottom" />
+              )}
+            </p>
+          </div>
+        ) : (
+          <div className={`p-5 ${G_CARD} opacity-50`}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">Coach</p>
+            <p className="text-xl font-bold text-white/40">
+              {isThinking ? "Analyzing…" : "First cue in ~4 seconds…"}
+            </p>
+          </div>
+        )}
+      </div>
 
-          {/* Thinking state */}
-          {isThinking && entries.length === 0 && (
-            <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-5">
-              <div className="relative h-8 w-8 shrink-0">
-                <div className="absolute inset-0 rounded-full border-2 border-blue-500/20" />
-                <div className="absolute inset-0 rounded-full border-t-2 border-blue-400 animate-spin" />
-              </div>
-              <p className="text-sm text-slate-400">Analyzing your pitch and camera…</p>
+      {/* ══ COACHING BUBBLES — right side ════════════════════════════════ */}
+      {latest && latest.result.coachingBubbles.length > 0 && (
+        <div className="absolute right-6 top-20 bottom-36 flex flex-col justify-center gap-2.5 max-w-[180px] sm:max-w-[200px]">
+          {latest.result.coachingBubbles.map((bubble, i) => (
+            <div key={i} className={`px-4 py-2.5 ${G_SM}`}>
+              <p className="text-sm font-semibold text-white/90 leading-snug">{bubble}</p>
             </div>
-          )}
+          ))}
+        </div>
+      )}
 
-          {/* Latest entry */}
-          {latest && (
-            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5 flex flex-col gap-5">
-              {/* Primary cue banner */}
-              <div className="flex items-start gap-3">
-                <span className="shrink-0 mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                  </svg>
-                </span>
-                <p className="text-base font-semibold text-white leading-snug">
-                  {latest.result.primaryCue}
-                </p>
-                {isThinking && (
-                  <span className="ml-auto shrink-0 flex items-center gap-1 text-[10px] text-blue-400">
-                    <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                    </svg>
-                    Updating
-                  </span>
-                )}
-              </div>
-
-              {/* Coaching bubbles */}
-              <div className="flex flex-wrap gap-2">
-                {latest.result.coachingBubbles.map((bubble, i) => (
-                  <span
-                    key={i}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300"
-                  >
-                    {bubble}
-                  </span>
-                ))}
-              </div>
-
-              {/* Delivery score + warning + next action */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Score */}
-                <div className={`rounded-xl border p-3 flex flex-col gap-1 ${scoreBg(latest.result.deliveryScore)}`}>
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                    Delivery
-                  </p>
-                  <p className={`text-2xl font-bold bg-gradient-to-r ${scoreGradient(latest.result.deliveryScore)} bg-clip-text text-transparent`}>
-                    {latest.result.deliveryScore}
-                    <span className="text-sm text-slate-500 font-normal"> / 100</span>
-                  </p>
-                  <div className="h-1 w-full rounded-full bg-white/5">
-                    <div
-                      className={`h-1 rounded-full bg-gradient-to-r ${scoreGradient(latest.result.deliveryScore)} transition-all duration-700`}
-                      style={{ width: `${latest.result.deliveryScore}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Clarity warning */}
-                <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 flex flex-col gap-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                    Warning
-                  </p>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {latest.result.clarityWarning}
-                  </p>
-                </div>
-
-                {/* Next action */}
-                <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-3 flex flex-col gap-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                    Next
-                  </p>
-                  <p className="text-xs text-purple-300 leading-relaxed">
-                    {latest.result.nextBestAction}
-                  </p>
-                </div>
-              </div>
+      {/* ══ PREVIOUS CUES — faded right strip ════════════════════════════ */}
+      {entries.length > 1 && (
+        <div className="absolute right-6 flex flex-col gap-1.5 max-w-[180px]"
+          style={{ top: `${20 + (latest?.result.coachingBubbles.length ?? 0) * 54 + 80}px` }}>
+          {entries.slice(1, 3).map((e) => (
+            <div key={e.id} className={`px-3 py-1.5 opacity-40 ${G_SM}`}>
+              <p className="text-[11px] font-semibold text-white/70 truncate">→ {e.result.primaryCue}</p>
             </div>
-          )}
+          ))}
+        </div>
+      )}
 
-          {/* Previous entries (compact) */}
-          {entries.length > 1 && (
-            <div className="flex flex-col gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600 px-1">
-                Previous cues
+      {/* ══ NEXT BEST ACTION — bottom-right ══════════════════════════════ */}
+      {latest && (
+        <div className="absolute bottom-[88px] right-6 max-w-[220px] sm:max-w-[260px]">
+          <div className={`p-4 ${G_CARD}`}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-1.5">Next</p>
+            <p className="text-sm font-bold text-white leading-snug">{latest.result.nextBestAction}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ══ CLARITY WARNING — bottom-center-left ═════════════════════════ */}
+      {latest && (
+        <div className="absolute bottom-[88px] left-6 max-w-[38vw]">
+          <div className={`px-4 py-2.5 ${G_CARD}`}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400 mb-1">Warning</p>
+            <p className="text-xs font-semibold text-white/80 leading-snug">{latest.result.clarityWarning}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ══ BOTTOM TRANSCRIPT BAR ════════════════════════════════════════ */}
+      <div className="absolute bottom-0 left-0 right-0 bg-black/55 backdrop-blur-xl border-t border-white/10">
+        <div className="flex items-center gap-3 px-5 py-3 min-h-[72px]">
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-white/30 self-start pt-0.5">
+            Transcript
+          </span>
+          <div className="flex-1 overflow-y-auto max-h-14">
+            {hasSpeech ? (
+              <p className="text-sm text-white/80 font-medium leading-relaxed">
+                {transcript
+                  ? <>{transcript}{interimText && <span className="text-white/35 italic"> {interimText}</span>}</>
+                  : <span className="text-white/25 italic font-normal">Start speaking…</span>
+                }
               </p>
-              {entries.slice(1).map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3 opacity-60"
-                >
-                  <span className="text-xs text-slate-500 shrink-0 mt-0.5">→</span>
-                  <span className="text-xs text-slate-400">{entry.result.primaryCue}</span>
-                  <div className="ml-auto flex flex-wrap gap-1">
-                    {entry.result.coachingBubbles.slice(0, 2).map((b, i) => (
-                      <span key={i} className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-slate-500">
-                        {b}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            ) : (
+              <input
+                type="text"
+                value={manualText}
+                onChange={(e) => { manualTextRef.current = e.target.value; setManualText(e.target.value); }}
+                placeholder="Type your pitch as you speak…"
+                className="w-full bg-transparent text-sm text-white/80 placeholder-white/25 focus:outline-none font-medium"
+              />
+            )}
+          </div>
         </div>
-      )}
-
-      {/* ── Empty coaching state ──────────────────────────────────────── */}
-      {entries.length === 0 && !isThinking && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/5 py-12 gap-3">
-          <p className="text-sm text-slate-500">
-            {isActive
-              ? "First coaching cue arrives in ~7 seconds…"
-              : "Start Live Practice to begin real-time coaching."}
-          </p>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

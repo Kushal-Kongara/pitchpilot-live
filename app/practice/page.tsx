@@ -7,13 +7,11 @@ import PitchInput from "@/components/PitchInput";
 import AnalysisDashboard from "@/components/AnalysisDashboard";
 import type { AnalysisResult, AnalyzeErrorResponse } from "@/lib/types";
 
-// Convert a File to a base64 string (data without the data-URL prefix)
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      // Strip "data:<mime>;base64," prefix
       const base64 = dataUrl.split(",")[1];
       if (!base64) reject(new Error("Failed to read file as base64"));
       else resolve(base64);
@@ -73,43 +71,42 @@ export default function PracticePage() {
     }
   }
 
-  // Require both pitch and image for a real multimodal analysis
   const canAnalyze = pitch.trim().length > 0 && imageFile !== null;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white text-slate-800">
       {/* Nav */}
-      <nav className="border-b border-white/5 px-6 py-4 flex items-center justify-between shrink-0">
+      <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-100 px-6 py-4 flex items-center justify-between shrink-0">
         <Link
           href="/"
-          className="font-semibold text-white tracking-tight hover:opacity-80 transition-opacity"
+          className="font-extrabold text-slate-900 tracking-tight hover:opacity-85 transition-opacity"
         >
           PitchPilot{" "}
-          <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-orange-500 via-orange-600 to-black bg-clip-text text-transparent">
             Live
           </span>
         </Link>
         <div className="flex items-center gap-4">
           <Link
             href="/live"
-            className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-orange-655 font-bold hover:text-orange-700 transition-colors"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
             Live Coach Mode
           </Link>
-          <span className="text-xs text-slate-600">Practice Mode</span>
+          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Practice Mode</span>
         </div>
       </nav>
 
       {/* Main layout */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-0">
         {/* Left: Inputs */}
-        <div className="border-b lg:border-b-0 lg:border-r border-white/5 p-6 lg:p-10 flex flex-col gap-6">
-          <div>
-            <h1 className="text-lg font-semibold text-white mb-1">
+        <div className="bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-6 lg:p-10 flex flex-col gap-6">
+          <div className="text-left">
+            <h1 className="text-lg font-extrabold text-slate-900 mb-1">
               Your Demo Materials
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-450 font-medium">
               Upload a slide or screenshot and paste your pitch to get coached.
             </p>
           </div>
@@ -122,18 +119,17 @@ export default function PracticePage() {
             onClick={handleAnalyze}
             disabled={!canAnalyze || loading}
             className="
-              w-full rounded-xl py-3.5 text-sm font-semibold transition-all duration-200
-              bg-gradient-to-r from-blue-600 to-purple-600
-              hover:from-blue-500 hover:to-purple-500
-              shadow-lg shadow-blue-500/10
-              disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:from-blue-600 disabled:hover:to-purple-600
-              text-white
+              w-full rounded-xl py-3.5 text-sm font-bold transition-all duration-200
+              bg-slate-950 text-white hover:bg-orange-650
+              shadow-md shadow-orange-500/5 hover:shadow-orange-500/10
+              disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-950
+              hover:scale-[1.01]
             "
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <svg
-                  className="h-4 w-4 animate-spin"
+                  className="h-4 w-4 animate-spin text-white"
                   viewBox="0 0 24 24"
                   fill="none"
                 >
@@ -158,14 +154,14 @@ export default function PracticePage() {
             )}
           </button>
 
-          <p className="text-xs text-slate-600 text-center">
-            Both a screenshot and a pitch are required for multimodal analysis.
+          <p className="text-xs text-slate-400 font-medium text-center">
+            Both a screenshot and a pitch script are required for analysis.
           </p>
         </div>
 
         {/* Right: Dashboard */}
-        <div className="p-6 lg:p-10 overflow-y-auto">
-          <h2 className="text-lg font-semibold text-white mb-6">
+        <div className="p-6 lg:p-10 overflow-y-auto bg-slate-50/50 text-left">
+          <h2 className="text-lg font-extrabold text-slate-900 mb-6">
             Coaching Report
           </h2>
           <AnalysisDashboard loading={loading} result={result} error={error} />
