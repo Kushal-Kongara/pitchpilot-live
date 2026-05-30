@@ -54,7 +54,7 @@ export default function ScoreCard({
             cx="28"
             cy="28"
             r={radius}
-            stroke="#f97316" /* orange-500 */
+            stroke="#1A1AA7" /* primary Royal Blue */
             strokeWidth={strokeWidth}
             fill="transparent"
             strokeDasharray={circumference}

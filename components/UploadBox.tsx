@@ -47,8 +47,8 @@ export default function UploadBox({ onFileSelect, preview }: UploadBoxProps) {
       className={`
         relative cursor-pointer rounded-2xl border-2 border-dashed transition-all duration-200
         ${dragging
-          ? "border-orange-500 bg-orange-500/5"
-          : "border-slate-200 bg-slate-50 hover:border-orange-400 hover:bg-slate-100/50"
+          ? "border-primary bg-primary/5"
+          : "border-slate-200 bg-slate-50 hover:border-primary/80 hover:bg-slate-100/50"
         }
         ${preview ? "p-2" : "p-8"}
         flex flex-col items-center justify-center min-h-[180px] shadow-sm
@@ -72,7 +72,7 @@ export default function UploadBox({ onFileSelect, preview }: UploadBoxProps) {
             unoptimized
           />
           <div className="absolute inset-0 flex items-end justify-center pb-3 opacity-0 hover:opacity-100 transition-opacity bg-black/40">
-            <span className="rounded-full bg-slate-950 px-3 py-1.5 text-xs text-white font-bold">
+            <span className="rounded-full bg-primary px-3 py-1.5 text-xs text-white font-bold">
               Click to replace
             </span>
           </div>

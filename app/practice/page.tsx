@@ -82,17 +82,17 @@ export default function PracticePage() {
           className="font-extrabold text-slate-900 tracking-tight hover:opacity-85 transition-opacity"
         >
           PitchPilot{" "}
-          <span className="bg-gradient-to-r from-orange-500 via-orange-600 to-black bg-clip-text text-transparent">
+          <span className="text-primary">
             Live
           </span>
         </Link>
         <div className="flex items-center gap-4">
           <Link
             href="/live"
-            className="flex items-center gap-1.5 text-xs text-orange-655 font-bold hover:text-orange-700 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-primary font-bold hover:text-primary-hover transition-colors"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-            Live Coach Mode
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            Live Reviewer Mode
           </Link>
           <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Practice Mode</span>
         </div>
@@ -104,10 +104,10 @@ export default function PracticePage() {
         <div className="bg-white border-b lg:border-b-0 lg:border-r border-slate-200 p-6 lg:p-10 flex flex-col gap-6">
           <div className="text-left">
             <h1 className="text-lg font-extrabold text-slate-900 mb-1">
-              Your Demo Materials
+              Your Practice Materials
             </h1>
             <p className="text-sm text-slate-450 font-medium">
-              Upload a slide or screenshot and paste your pitch to get coached.
+              Upload your resume, slide, or screenshot and paste your response script to get evaluated.
             </p>
           </div>
 
@@ -120,9 +120,9 @@ export default function PracticePage() {
             disabled={!canAnalyze || loading}
             className="
               w-full rounded-xl py-3.5 text-sm font-bold transition-all duration-200
-              bg-slate-950 text-white hover:bg-orange-650
-              shadow-md shadow-orange-500/5 hover:shadow-orange-500/10
-              disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-950
+              bg-primary text-white hover:bg-primary-hover
+              shadow-md shadow-primary/5 hover:shadow-primary/10
+              disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary
               hover:scale-[1.01]
             "
           >
@@ -150,12 +150,12 @@ export default function PracticePage() {
                 Analyzing…
               </span>
             ) : (
-              "Analyze My Pitch"
+              "Analyze My Response"
             )}
           </button>
 
           <p className="text-xs text-slate-400 font-medium text-center">
-            Both a screenshot and a pitch script are required for analysis.
+            Both a visual reference and response text are required for analysis.
           </p>
         </div>
 

@@ -82,8 +82,8 @@ export default function LiveCoach() {
   const streamRef       = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const recognitionRef  = useRef<ISpeechRecognition | null>(null);
-  const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const isFetchingRef   = useRef(false);
+  const isActiveRef     = useRef(false);
   const transcriptRef   = useRef("");
   const manualTextRef   = useRef("");
   const sessionStartRef = useRef(0); // timestamp ms
@@ -200,6 +200,9 @@ export default function LiveCoach() {
       isFetchingRef.current = false;
       setIsThinking(false);
       setStreamingCue("");
+      if (isActiveRef.current) {
+        setTimeout(() => { void doCoachingCallRef.current(); }, 300);
+      }
     }
   };
 
@@ -217,7 +220,7 @@ export default function LiveCoach() {
 
   // ── Session lifecycle ─────────────────────────────────────────────────────
   function cleanupSession() {
-    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    isActiveRef.current = false;
     if (recognitionRef.current) {
       recognitionRef.current.onend = null;
       try { recognitionRef.current.stop(); } catch { /* already stopped */ }
@@ -265,8 +268,8 @@ export default function LiveCoach() {
       return;
     }
     startSpeechRecognition();
-    // 4s interval — fast enough to feel live, spaced enough to not overlap
-    intervalRef.current = setInterval(() => { void doCoachingCallRef.current(); }, 4000);
+    isActiveRef.current = true;
+    void doCoachingCallRef.current();
     setIsActive(true);
   }
 
@@ -335,8 +338,8 @@ export default function LiveCoach() {
   if (!isActive) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 py-12 px-6 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-50 border border-orange-100 shadow-sm">
-          <svg className="h-10 w-10 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 shadow-sm">
+          <svg className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
           </svg>
         </div>
@@ -344,13 +347,13 @@ export default function LiveCoach() {
         <div className="flex flex-col gap-3 max-w-sm">
           <h2 className="text-2xl font-extrabold text-slate-900">Start when you&apos;re ready.</h2>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Your camera fills the screen. PitchPilot watches, listens, and drops
-            streaming coaching cues as you speak — every 4 seconds.
+            Your camera fills the screen. PitchPilot Live reviews your posture, tracks your pacing, and drops
+            coaching recommendations as you speak — every 4 seconds.
           </p>
           {!hasSpeech && (
-            <p className="text-xs text-orange-600 font-medium">
+            <p className="text-xs text-primary font-medium">
               Speech recognition not available in this browser.
-              You&apos;ll type your script in the transcript bar.
+              You&apos;ll type your responses in the transcript bar.
             </p>
           )}
         </div>
@@ -363,7 +366,7 @@ export default function LiveCoach() {
 
         <button
           onClick={startLive}
-          className="rounded-2xl bg-slate-950 hover:bg-orange-600 px-10 py-4 text-sm font-bold text-white shadow-lg shadow-slate-900/10 hover:shadow-orange-500/20 transition-all duration-200 hover:scale-[1.03]"
+          className="rounded-2xl bg-primary hover:bg-primary-hover px-10 py-4 text-sm font-bold text-white shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all duration-200 hover:scale-[1.03]"
         >
           Start Live Practice
         </button>
@@ -402,15 +405,20 @@ export default function LiveCoach() {
         {/* Left: branding + status */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className={`flex items-center gap-2 px-3.5 py-1.5 ${G_PILL}`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
             <span className="text-xs font-extrabold text-white tracking-tight">
-              PitchPilot <span className="text-orange-400">Live</span>
+              PitchPilot <span className="text-blue-300">Live</span>
             </span>
           </div>
 
           <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white ${G_PILL}`}>
             <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
             LIVE
+          </span>
+
+          <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-200 ${G_PILL}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
+            Posture Control
           </span>
 
           {isScreenShare && (
@@ -421,12 +429,12 @@ export default function LiveCoach() {
 
           {/* Streaming indicator */}
           {isThinking && (
-            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-300 ${G_PILL}`}>
+            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-300 ${G_PILL}`}>
               <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
-              Streaming…
+              Reviewing…
             </span>
           )}
 
@@ -448,7 +456,7 @@ export default function LiveCoach() {
                   <circle cx="14" cy="14" r="11" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" fill="none" />
                   <circle
                     cx="14" cy="14" r="11"
-                    stroke="#f97316" strokeWidth="2.5" fill="none"
+                    stroke="#1A1AA7" strokeWidth="2.5" fill="none"
                     strokeDasharray={69.12}
                     strokeDashoffset={69.12 - (69.12 * latest.result.deliveryScore) / 100}
                     strokeLinecap="round"
@@ -482,14 +490,14 @@ export default function LiveCoach() {
       <div className="absolute left-6 top-1/2 -translate-y-1/2 max-w-[42vw]">
         {displayCue ? (
           <div className={`p-5 ${G_CARD}`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-2">
               {streamingCue ? "⚡ Streaming" : "Coach"}
             </p>
-            <p className="text-2xl sm:text-3xl font-black text-white leading-tight">
+            <p className="text-2xl sm:text-3xl font-black text-white leading-tight font-display">
               {displayCue}
               {/* Blinking cursor while streaming */}
               {streamingCue && (
-                <span className="inline-block w-0.5 h-7 bg-orange-400 ml-0.5 animate-pulse align-bottom" />
+                <span className="inline-block w-0.5 h-7 bg-primary ml-0.5 animate-pulse align-bottom" />
               )}
             </p>
           </div>
@@ -530,7 +538,7 @@ export default function LiveCoach() {
       {latest && (
         <div className="absolute bottom-[88px] right-6 max-w-[220px] sm:max-w-[260px]">
           <div className={`p-4 ${G_CARD}`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-1.5">Next</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-1.5">Next</p>
             <p className="text-sm font-bold text-white leading-snug">{latest.result.nextBestAction}</p>
           </div>
         </div>

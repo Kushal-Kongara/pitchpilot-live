@@ -1,72 +1,61 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
-const steps = [
-  {
-    number: "01",
-    title: "Upload your visual",
-    description:
-      "Drop in a slide, demo screenshot, or product mockup. PitchPilot reads the visual context alongside your words.",
-  },
-  {
-    number: "02",
-    title: "Paste your pitch",
-    description:
-      "Dump your draft script or talking points. Rough is fine — that's exactly what we're here to fix.",
-  },
-  {
-    number: "03",
-    title: "Get coached",
-    description:
-      "Receive a scored report: clarity, demo flow, missing elements, an improved pitch, and the questions judges will ask.",
-  },
-];
-
 export default function Home() {
+  const [formData, setFormData] = useState({ name: "", email: "", message: "" });
+  const [formSubmitted, setFormSubmitted] = useState(false);
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSubmitted(true);
+    setFormData({ name: "", email: "", message: "" });
+    setTimeout(() => setFormSubmitted(false), 5000);
+  };
+
   return (
-    <main className="flex flex-col min-h-screen bg-white text-slate-800 overflow-x-hidden">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-100 px-6 py-4 flex items-center justify-between transition-all duration-300">
+    <main className="flex flex-col min-h-screen bg-cream text-dark-navy overflow-x-hidden selection:bg-primary selection:text-white">
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 bg-cream/90 backdrop-blur-md border-b border-dark-navy/10 px-6 py-5 flex items-center justify-between transition-all duration-300">
         <div className="flex items-center gap-3">
-          {/* Animated radar/logo icon in orange */}
+          {/* Custom Royal Blue radar/status dot */}
           <div className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
           </div>
-          <span className="font-extrabold text-slate-900 tracking-tight text-lg">
-            PitchPilot{" "}
-            <span className="bg-gradient-to-r from-orange-500 via-orange-600 to-black bg-clip-text text-transparent">
-              Live
-            </span>
+          <span className="font-display font-extrabold text-xl tracking-tight uppercase">
+            PitchPilot <span className="text-primary font-normal font-sans">Live</span>
           </span>
         </div>
 
-        {/* Center menu links */}
-        <div className="hidden md:flex items-center gap-8 text-sm">
-          <a href="#features" className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium">
-            How It Works
+        {/* Desktop Menu */}
+        <div className="hidden md:flex items-center gap-10 text-xs font-semibold tracking-widest uppercase">
+          <a href="#about" className="text-dark-navy/60 hover:text-primary transition-colors duration-200">
+            About
           </a>
-          <a href="#highlights" className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium">
-            Highlights
+          <a href="#contact" className="text-dark-navy/60 hover:text-primary transition-colors duration-200">
+            Contact
           </a>
-          <a href="/practice" className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium">
-            Deep Coach
-          </a>
-          <a href="/live" className="text-slate-600 hover:text-orange-600 transition-colors duration-200 font-medium">
+          <Link href="/practice" className="text-dark-navy/60 hover:text-primary transition-colors duration-200">
+            Practice Mode
+          </Link>
+          <Link href="/live" className="text-dark-navy/60 hover:text-primary transition-colors duration-200">
             Live Coach
-          </a>
+          </Link>
         </div>
 
         <div className="flex items-center gap-4">
           <Link
             href="/live"
-            className="flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 transition-colors font-semibold"
+            className="hidden sm:flex items-center gap-2 px-5 py-2 text-xs font-bold tracking-widest uppercase border-2 border-primary text-primary hover:bg-primary hover:text-white transition-all duration-200"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
             Live Coach
           </Link>
           <Link
             href="/practice"
-            className="px-4 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-full transition-all duration-200 hover:scale-[1.02]"
+            className="px-5 py-2 text-xs font-bold tracking-widest uppercase bg-primary text-white hover:bg-primary-hover transition-all duration-200"
           >
             Practice →
           </Link>
@@ -74,348 +63,274 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center justify-center pt-24 pb-12 px-6 text-center">
-        {/* Floating Bubble Icons in Orange/Black theme */}
-        <div className="absolute top-12 flex justify-center items-center gap-4 py-2 px-4 bg-slate-50 border border-slate-100 rounded-full shadow-sm backdrop-blur-sm animate-fade-in">
-          {/* Camera bubble */}
-          <div className="p-2 bg-white border border-slate-200 rounded-full text-slate-500 hover:text-orange-500 hover:scale-110 transition-all duration-300 cursor-help" title="Video Feedback">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <path d="M23 7l-7 5 7 5V7z" />
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-            </svg>
-          </div>
-          {/* Mic bubble */}
-          <div className="p-2 bg-white border border-slate-200 rounded-full text-slate-500 hover:text-orange-500 hover:scale-110 transition-all duration-300 cursor-help" title="Voice Analysis">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <path d="M12 1v10M19 8a7 7 0 0 1-14 0" />
-            </svg>
-          </div>
-          {/* Slide bubble */}
-          <div className="p-2 bg-white border border-slate-200 rounded-full text-slate-500 hover:text-orange-500 hover:scale-110 transition-all duration-300 cursor-help" title="Slide Visual Alignment">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-              <line x1="2" y1="20" x2="22" y2="20" />
-            </svg>
-          </div>
-          {/* AI bubble */}
-          <div className="p-2 bg-white border border-slate-200 rounded-full text-slate-500 hover:text-orange-500 hover:scale-110 transition-all duration-300 cursor-help" title="Gemini Pro Brain">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-              <rect x="3" y="11" width="18" height="10" rx="2" />
-              <circle cx="12" cy="5" r="2" />
-            </svg>
-          </div>
+      <section className="relative flex flex-col items-center justify-center pt-20 pb-16 px-6 text-center max-w-6xl mx-auto w-full">
+        {/* Category tag */}
+        <div className="mb-6 inline-flex items-center gap-2 border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+          Real-time Interview & Presentation Reviewer
         </div>
 
-        {/* Badge in Orange theme */}
-        <div className="mt-6 mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/5 px-4 py-1.5 text-xs text-orange-600 font-semibold">
-          <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
-          AI-Powered Hackathon Coaching
-        </div>
-
-        {/* Headline */}
-        <h1 className="max-w-4xl text-5xl font-black tracking-tight text-slate-950 sm:text-7xl lg:text-8xl uppercase leading-none">
-          Pitch Better.<br />
-          <span className="bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 bg-clip-text text-transparent drop-shadow-sm">
-            Demo Sharper.
-          </span><br />
-          Win the Room.
+        {/* Large Typographic Title */}
+        <h1 className="max-w-4xl text-5xl font-extrabold tracking-tighter text-dark-navy sm:text-7xl lg:text-8xl uppercase leading-none font-display">
+          Interview Better.<br />
+          <span className="text-primary italic font-serif font-normal lowercase tracking-normal block mt-2">
+            real-time coaching.
+          </span>
+          Succeed Faster.
         </h1>
 
-        {/* Subtitle */}
-        <p className="mt-8 max-w-2xl text-lg text-slate-600 leading-relaxed font-normal">
-          Upload your slide or demo screenshot, paste your pitch, and get
-          instant AI coaching on story clarity, demo flow, and judge readiness —
-          in seconds.
+        {/* Description */}
+        <p className="mt-8 max-w-2xl text-base md:text-lg text-dark-navy/70 leading-relaxed font-medium">
+          A professional prep coach that watches, listens, and guides you during interviews or practice runs. Get live scores, posture control warnings, instant recommendations, and streaming transcripts.
         </p>
 
-        {/* CTA Buttons - Black & Orange theme */}
-        <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center z-10">
-          <Link
-            href="/practice"
-            className="group relative rounded-full bg-slate-950 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-slate-900/10 hover:bg-orange-600 hover:shadow-orange-500/20 hover:scale-[1.03] transition-all duration-300"
-          >
-            Start Practice Mode
-            <span className="inline-block ml-1 group-hover:translate-x-1 transition-transform">→</span>
-          </Link>
+        {/* CTA Buttons */}
+        <div className="mt-10 flex flex-col sm:flex-row gap-5 items-center z-10 w-full justify-center">
           <Link
             href="/live"
-            className="flex items-center gap-2 rounded-full border border-orange-500 bg-orange-500/5 px-8 py-4 text-sm font-bold text-orange-600 hover:bg-orange-500/10 hover:scale-[1.03] transition-all duration-300"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-primary hover:bg-primary-hover px-10 py-4 text-xs font-bold uppercase tracking-widest text-white shadow-xl hover:scale-[1.02] transition-all duration-200"
           >
-            <span className="h-2 w-2 rounded-full bg-orange-500 animate-ping" />
-            Try Live Coach
+            <span className="h-2 w-2 rounded-full bg-white animate-ping" />
+            Start Live Session
+          </Link>
+          <Link
+            href="/practice"
+            className="w-full sm:w-auto text-center border-2 border-dark-navy px-10 py-4 text-xs font-bold uppercase tracking-widest text-dark-navy hover:bg-dark-navy hover:text-white hover:scale-[1.02] transition-all duration-200"
+          >
+            Deep Practice Mode
           </Link>
         </div>
-        
-        <span className="mt-4 text-xs text-slate-400 font-medium">No signup or API keys required</span>
 
-        {/* 3D Character Group & Badges Container */}
-        <div className="relative w-full max-w-4xl mt-16 bg-gradient-to-b from-slate-100/80 to-transparent border border-slate-200/60 rounded-3xl p-4 md:p-6 shadow-sm overflow-hidden">
-          {/* Soft background glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] bg-orange-500/5 blur-[120px] rounded-full pointer-events-none" />
+        <span className="mt-4 text-xs text-dark-navy/40 font-semibold tracking-wider uppercase">Free to use · Powered by Gemini 2.5 Flash</span>
 
-          {/* Floating UI badges - Crisp White Cards with dark/orange details */}
-          {/* Badge 1: Top Left */}
-          <div className="absolute top-8 left-4 md:left-12 z-20 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 shadow-md hover:scale-105 transition-transform duration-200 cursor-help">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-emerald-500">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            Clarity: 92%
+        {/* Custom Mockup UI Card - Recreating the structured overlap aesthetic */}
+        <div className="relative w-full max-w-4xl mt-20 border-2 border-primary bg-white p-4 md:p-6 shadow-[8px_8px_0px_0px_rgba(26,26,167,0.15)] overflow-hidden text-left">
+          {/* Window control dots */}
+          <div className="flex gap-1.5 border-b border-dark-navy/10 pb-4 mb-4">
+            <div className="h-3 w-3 rounded-full bg-red-400" />
+            <div className="h-3 w-3 rounded-full bg-yellow-400" />
+            <div className="h-3 w-3 rounded-full bg-green-400" />
+            <span className="text-[10px] text-dark-navy/40 font-mono ml-3">live_coach_hud.exe</span>
           </div>
 
-          {/* Badge 2: Top Right */}
-          <div className="absolute top-16 right-4 md:right-12 z-20 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 shadow-md hover:scale-105 transition-transform duration-200 cursor-help">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-orange-500">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-            </svg>
-            Demo Flow: Smooth
-          </div>
-
-          {/* Badge 3: Mid Left */}
-          <div className="absolute bottom-16 left-6 md:left-16 z-20 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 shadow-md hover:scale-105 transition-transform duration-200 cursor-help">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 text-amber-500">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-            Delivery: Engaging
-          </div>
-
-          {/* Badge 4: Mid Right */}
-          <div className="absolute bottom-24 right-6 md:right-24 z-20 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-800 shadow-md hover:scale-105 transition-transform duration-200 cursor-help">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-            Coach Cues: Active
-          </div>
-
-          {/* Hero Illustration */}
-          <div className="relative z-10 w-full overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-inner">
-            <img
-              src="/hero_group.png"
-              alt="Diverse 3D hackathon team celebrating pitch success"
-              className="w-full object-cover max-h-[500px] object-top scale-102 hover:scale-100 transition-transform duration-700"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Grid Highlights Section */}
-      <section id="highlights" className="relative py-24 bg-slate-50 border-t border-slate-100">
-        <div className="max-w-5xl mx-auto px-6">
-          {/* Header */}
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-slate-950">
-              PitchPilot Highlights
-            </h2>
-            <p className="text-sm text-orange-600 font-bold tracking-widest uppercase mt-2">
-              Performance & Community Benchmarks
-            </p>
-          </div>
-
-          {/* Highlights Grid Layout */}
-          <div className="flex flex-col gap-6">
-            {/* Card 1: Black Card + Warm Orange/Black collage grid */}
-            <div className="bg-slate-950 border border-slate-900 rounded-3xl p-8 flex flex-col lg:flex-row items-center justify-between gap-8 hover:shadow-xl transition-all duration-300">
-              <div className="flex-1 text-left">
-                <span className="text-xs font-bold text-orange-500 uppercase tracking-widest block mb-2 font-mono">Hackathon Performance</span>
-                <span className="text-8xl md:text-9xl font-black text-orange-500 tracking-tighter block leading-none">
-                  98%
-                </span>
-                <h3 className="text-lg font-bold text-white mt-4 mb-2">
-                  Demo Score Improvement
-                </h3>
-                <p className="text-sm text-slate-400 leading-relaxed max-w-sm">
-                  Average clarity and delivery score increase recorded from first run to final pitch evaluation.
-                </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Column 1: Camera Mockup & Posture */}
+            <div className="md:col-span-2 border-2 border-dark-navy p-4 bg-cool-grey/20 relative flex flex-col justify-between aspect-video rounded">
+              {/* Overlay elements */}
+              <div className="flex justify-between items-start">
+                <div className="bg-primary text-white text-[9px] font-bold px-2 py-1 uppercase tracking-widest">
+                  Cam Source Active
+                </div>
+                <div className="bg-white border border-dark-navy text-dark-navy text-[9px] font-mono px-2 py-1">
+                  1080p · 30fps
+                </div>
               </div>
 
-              {/* Colorful Orange-Black palette themed grid */}
-              <div className="grid grid-cols-4 gap-2 w-full max-w-[360px] aspect-[4/3] shrink-0">
-                {/* 1. SaaS */}
-                <div className="rounded-xl bg-orange-600 flex items-center justify-center text-white shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="SaaS Pitches Coached">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                    <line x1="2" y1="20" x2="22" y2="20" />
-                    <line x1="12" y1="17" x2="12" y2="20" />
-                  </svg>
-                </div>
-                {/* 2. Health */}
-                <div className="rounded-xl bg-slate-800 flex items-center justify-center text-slate-300 shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="MedTech & HealthTech">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                  </svg>
-                </div>
-                {/* 3. GreenTech */}
-                <div className="rounded-xl bg-amber-600 flex items-center justify-center text-white shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="Sustainability & GreenTech">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 3.58 1 9.3a7 7 0 0 1-9 8.7z" />
-                  </svg>
-                </div>
-                {/* 4. Security */}
-                <div className="rounded-xl bg-slate-900 flex items-center justify-center text-slate-400 shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="Cybersecurity & DevTools">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                </div>
-                {/* 5. E-commerce */}
-                <div className="rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="Retail & E-commerce">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <circle cx="9" cy="21" r="1" />
-                    <circle cx="20" cy="21" r="1" />
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                  </svg>
-                </div>
-                {/* 6. FinTech */}
-                <div className="rounded-xl bg-slate-700 flex items-center justify-center text-slate-300 shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="FinTech & Blockchain">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
-                  </svg>
-                </div>
-                {/* 7. EdTech */}
-                <div className="rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="Education & E-learning">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                    <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
-                  </svg>
-                </div>
-                {/* 8. Gaming */}
-                <div className="rounded-xl bg-slate-600 flex items-center justify-center text-slate-300 shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="Entertainment & Gaming">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <rect x="2" y="6" width="20" height="12" rx="3" />
-                    <path d="M6 12h4M8 10v4M15 11h.01M18 13h.01" />
-                  </svg>
-                </div>
-                {/* 9. Web3 */}
-                <div className="rounded-xl bg-orange-700 flex items-center justify-center text-white shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="DAO & Crypto Infrastructure">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                </div>
-                {/* 10. AI */}
-                <div className="rounded-xl bg-slate-800 flex items-center justify-center text-orange-500 shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="Generative AI & LLMs">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <rect x="3" y="11" width="18" height="10" rx="2" />
-                    <circle cx="12" cy="5" r="2" />
-                    <path d="M12 7v4M8 15h.01M16 15h.01" />
-                  </svg>
-                </div>
-                {/* 11. Hardware */}
-                <div className="rounded-xl bg-amber-700 flex items-center justify-center text-white shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="IoT & Hardware Demos">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M4.5 16.5c-1.5 1.5-2.5 3.5-2.5 5.5C4 22 6 21 7.5 19.5" />
-                    <path d="M14 14.75a17.24 17.24 0 0 0 5.25-5.25L21 3l-6.5 1.75a17.24 17.24 0 0 0-5.25 5.25L9 12h5z" />
-                  </svg>
-                </div>
-                {/* 12. Impact */}
-                <div className="rounded-xl bg-black border border-slate-900 flex items-center justify-center text-orange-500 shadow-md hover:scale-105 transition-all duration-200 cursor-help" title="Social Good & Civic Hackathons">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-                    <path d="M12 2a5 5 0 0 1 5 5v5a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z" />
-                  </svg>
-                </div>
+              {/* Simulated camera wireframe/outline representing posture control */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
+                <svg className="w-40 h-40 text-primary" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1">
+                  {/* Eye line */}
+                  <line x1="10" y1="40" x2="90" y2="40" strokeDasharray="3 3" />
+                  <text x="12" y="37" className="text-[6px] fill-current stroke-none">EYE LEVEL</text>
+                  {/* Head circle */}
+                  <circle cx="50" cy="45" r="18" />
+                  {/* Shoulders */}
+                  <path d="M20 85 C35 75, 65 75, 80 85" />
+                  <line x1="50" y1="10" x2="50" y2="90" strokeDasharray="2 2" />
+                </svg>
+              </div>
+
+              {/* Bottom posture validation alert */}
+              <div className="bg-emerald-50 border-2 border-emerald-500 p-2.5 flex items-center justify-between text-xs text-emerald-800 font-bold z-10">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  POSTURE STABLE
+                </span>
+                <span className="font-mono text-[10px] text-emerald-600">Shoulders Aligned ✓</span>
               </div>
             </div>
 
-            {/* Card 2: Wide Light Card (Total Pitches Analyzed) */}
-            <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-md transition-all duration-300">
-              <div className="flex-1 text-left w-full">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Total analyzed volume</span>
+            {/* Column 2: Live AI Reviews */}
+            <div className="flex flex-col justify-between gap-4">
+              {/* Score */}
+              <div className="border-2 border-primary bg-white p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-dark-navy/40 mb-1">Live Score</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-slate-400 font-bold uppercase">VND</span>
-                  <span className="text-6xl font-black text-slate-950 tracking-tight">124,802</span>
-                  <span className="text-sm font-bold text-slate-500 ml-1">pitches</span>
+                  <span className="text-4xl font-extrabold text-primary font-display">88</span>
+                  <span className="text-xs text-dark-navy/40 font-mono">/ 100</span>
+                </div>
+                <div className="h-1.5 w-full bg-cool-grey mt-2 rounded">
+                  <div className="h-1.5 bg-primary rounded" style={{ width: "88%" }} />
                 </div>
               </div>
 
-              {/* Vertical divider */}
-              <div className="hidden md:block w-[1.5px] h-12 bg-slate-200 self-stretch my-auto" />
-
-              <div className="flex-1 text-left w-full md:pl-6">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Growth Index</span>
-                <span className="text-5xl font-black text-slate-950 tracking-tight block">
-                  +40,240
-                </span>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block mt-1">
-                  Pitches year-on-year
-                </span>
-              </div>
-            </div>
-
-            {/* Card 3 (Orange) & Card 4 (Black) Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Card 3: Orange Card */}
-              <div className="bg-orange-500 text-white rounded-3xl p-8 flex flex-col justify-between min-h-[220px] shadow-sm hover:bg-orange-600 hover:shadow-orange-500/10 transition-all duration-300">
-                <div className="text-left">
-                  <span className="text-xs font-bold text-orange-100 uppercase tracking-widest block mb-1">Live practice minutes</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xs font-semibold">VND</span>
-                    <span className="text-5xl font-black text-white tracking-tight">10,968</span>
-                    <span className="text-xs font-bold ml-1">hours</span>
-                  </div>
-                </div>
-                
-                {/* Horizontal line divider */}
-                <div className="w-full h-px bg-white/20 my-4" />
-                
-                <div className="text-left flex items-baseline gap-1 text-xs font-bold text-orange-100">
-                  <span>VND</span>
-                  <span className="text-sm font-black">+472</span>
-                  <span className="font-semibold ml-1">hours year-on-year</span>
-                </div>
+              {/* Recommendation Cue */}
+              <div className="border-2 border-dark-navy bg-white p-4">
+                <p className="text-[9px] font-mono uppercase text-primary font-bold mb-1">⚡ Dynamic Recommendation</p>
+                <p className="text-sm font-extrabold text-dark-navy leading-snug">
+                  "Maintain eye contact with the lens and slow down your pacing."
+                </p>
               </div>
 
-              {/* Card 4: Black Card */}
-              <div className="bg-slate-950 text-white rounded-3xl p-8 flex flex-col justify-between min-h-[220px] shadow-md hover:bg-black hover:shadow-slate-900/10 transition-all duration-300">
-                <div className="text-left">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1">Evaluation Quality</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xs font-semibold">VND</span>
-                    <span className="text-5xl font-black text-orange-500 tracking-tight">9.4 / 10</span>
-                  </div>
-                </div>
-                
-                <div className="text-left text-xs font-bold text-slate-400 mt-auto">
-                  <span>Average rating by hackathon judges</span>
-                </div>
+              {/* Transcript Preview */}
+              <div className="border border-dark-navy/20 bg-cool-grey/10 p-4 flex-1 flex flex-col justify-between min-h-[100px]">
+                <p className="text-[9px] font-mono uppercase text-dark-navy/40 mb-2">Live Transcript</p>
+                <p className="text-xs text-dark-navy/80 font-medium leading-relaxed italic">
+                  "...my experience building scalable react architectures allows me to lead the engineering team..."
+                </p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 3-step section ("How it works") */}
-      <section id="features" className="border-t border-slate-100 px-6 py-24 bg-white">
+      {/* About Section */}
+      <section id="about" className="border-t-2 border-dark-navy px-6 py-24 bg-white relative">
+        {/* Background visual detail */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+
         <div className="mx-auto max-w-5xl">
-          <div className="text-center mb-16">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">
-              How it works
+          {/* Header */}
+          <div className="text-left mb-16 border-b-2 border-dark-navy pb-8">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono block mb-2">01 / The Concept</span>
+            <h2 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tight text-dark-navy font-display">
+              Real-time Interview Analysis
             </h2>
-            <p className="text-3xl font-black text-slate-950 mt-2">
-              Three Steps to a Winning Demo
+            <p className="text-sm text-dark-navy/60 font-medium mt-3 max-w-2xl leading-relaxed">
+              Standard feedback happens after you finish. PitchPilot Live reviews you in real time — analyzing your speech and camera frame to help you adjust your delivery, posture, and pacing on the fly.
             </p>
           </div>
-          <div className="grid gap-8 sm:grid-cols-3">
-            {steps.map((step) => (
-              <div
-                key={step.number}
-                className="group relative rounded-2xl border border-slate-150 bg-slate-50 p-6 hover:border-slate-200 hover:bg-slate-100/65 transition-all duration-300"
-              >
-                <div className="mb-4 text-3xl font-black bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">
-                  {step.number}
-                </div>
-                <h3 className="mb-2 font-bold text-slate-900 text-lg">{step.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">
-                  {step.description}
+
+          {/* Grid of features */}
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Feature 1: Scores */}
+            <div className="border-2 border-primary bg-cream p-6 shadow-[4px_4px_0px_0px_rgba(26,26,167,1)] flex flex-col justify-between min-h-[220px] transition-transform duration-200 hover:-translate-y-1">
+              <div>
+                <span className="text-xs font-mono font-bold text-primary block mb-3">01 // METRICS</span>
+                <h3 className="text-lg font-extrabold text-dark-navy uppercase tracking-tight mb-2 font-display">Live Scores</h3>
+                <p className="text-xs text-dark-navy/70 leading-relaxed font-medium">
+                  Dynamic assessment of your vocal tone, speaking clarity, and content flow. Scores adjust every few seconds as you present.
                 </p>
               </div>
-            ))}
+            </div>
+
+            {/* Feature 2: Recommendations */}
+            <div className="border-2 border-dark-navy bg-cream p-6 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] flex flex-col justify-between min-h-[220px] transition-transform duration-200 hover:-translate-y-1">
+              <div>
+                <span className="text-xs font-mono font-bold text-dark-navy/60 block mb-3">02 // FEEDBACK</span>
+                <h3 className="text-lg font-extrabold text-dark-navy uppercase tracking-tight mb-2 font-display">Actionable Cues</h3>
+                <p className="text-xs text-dark-navy/70 leading-relaxed font-medium">
+                  Immediate recommendations whispering what to do next. Hints like "Slow down", "Start demo", or "Use stronger hooks."
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 3: Posture Control */}
+            <div className="border-2 border-primary bg-cream p-6 shadow-[4px_4px_0px_0px_rgba(26,26,167,1)] flex flex-col justify-between min-h-[220px] transition-transform duration-200 hover:-translate-y-1">
+              <div>
+                <span className="text-xs font-mono font-bold text-primary block mb-3">03 // VISION</span>
+                <h3 className="text-lg font-extrabold text-dark-navy uppercase tracking-tight mb-2 font-display">Posture Control</h3>
+                <p className="text-xs text-dark-navy/70 leading-relaxed font-medium">
+                  Webcam vision analysis tracking body language, eye alignment, speaking distance, and overall presentation posture.
+                </p>
+              </div>
+            </div>
+
+            {/* Feature 4: Live Transcripts */}
+            <div className="border-2 border-dark-navy bg-cream p-6 shadow-[4px_4px_0px_0px_rgba(9,9,11,1)] flex flex-col justify-between min-h-[220px] transition-transform duration-200 hover:-translate-y-1">
+              <div>
+                <span className="text-xs font-mono font-bold text-dark-navy/60 block mb-3">04 // VOICE</span>
+                <h3 className="text-lg font-extrabold text-dark-navy uppercase tracking-tight mb-2 font-display">Streaming Text</h3>
+                <p className="text-xs text-dark-navy/70 leading-relaxed font-medium">
+                  Integrated real-time speech recognition transcribes your words immediately, allowing you to see how your pacing aligns with visual cues.
+                </p>
+              </div>
+            </div>
           </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="border-t-2 border-dark-navy px-6 py-24 bg-cream relative">
+        <div className="mx-auto max-w-xl">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono block mb-2">02 / Contact</span>
+            <h2 className="text-4xl font-extrabold uppercase tracking-tight text-dark-navy font-display">
+              Get In Touch
+            </h2>
+            <p className="text-xs text-dark-navy/60 font-semibold uppercase tracking-wider mt-2">
+              Have questions or feedback? Drop us a line.
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleContactSubmit} className="border-2 border-dark-navy p-8 bg-white shadow-[8px_8px_0px_0px_rgba(9,9,11,1)] flex flex-col gap-6">
+            {formSubmitted ? (
+              <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-800 p-4 text-xs font-bold text-center">
+                THANK YOU! YOUR MESSAGE WAS SUBMITTED SUCCESSFULLY.
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-1.5 text-left">
+              <label htmlFor="name" className="text-[10px] font-bold uppercase tracking-widest text-dark-navy/60">
+                Your Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="John Doe"
+                className="w-full border-2 border-cool-grey focus:border-primary p-3 text-sm focus:outline-none bg-cream rounded-none transition-colors"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 text-left">
+              <label htmlFor="email" className="text-[10px] font-bold uppercase tracking-widest text-dark-navy/60">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="john@example.com"
+                className="w-full border-2 border-cool-grey focus:border-primary p-3 text-sm focus:outline-none bg-cream rounded-none transition-colors"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 text-left">
+              <label htmlFor="message" className="text-[10px] font-bold uppercase tracking-widest text-dark-navy/60">
+                Your Message
+              </label>
+              <textarea
+                id="message"
+                required
+                rows={4}
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                placeholder="Tell us what you think..."
+                className="w-full border-2 border-cool-grey focus:border-primary p-3 text-sm focus:outline-none bg-cream rounded-none transition-colors resize-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-widest py-4 transition-colors duration-200 mt-2"
+            >
+              Send Message
+            </button>
+          </form>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-100 bg-slate-50 px-6 py-8 text-center text-xs text-slate-500">
-        <p className="mb-2">PitchPilot Live — built with AI for hackathons</p>
-        <p>&copy; {new Date().getFullYear()} PitchPilot. All rights reserved.</p>
+      <footer className="border-t-2 border-dark-navy bg-white px-6 py-10 text-center text-[10px] font-bold uppercase tracking-widest text-dark-navy/55">
+        <p className="mb-2">PitchPilot Live — Real-time Interview Review & Prep Coach</p>
+        <p className="text-dark-navy/30">&copy; {new Date().getFullYear()} PitchPilot. All rights reserved.</p>
       </footer>
     </main>
   );

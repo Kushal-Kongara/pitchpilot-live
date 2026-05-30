@@ -9,17 +9,17 @@ const SESSION_KEY = "pitchpilot_session";
 // ── Score colour helpers ─────────────────────────────────────────────────────
 function scoreColor(n: number) {
   if (n >= 80) return "text-emerald-600";
-  if (n >= 60) return "text-orange-500";
+  if (n >= 60) return "text-primary";
   return "text-red-500";
 }
 function scoreBg(n: number) {
   if (n >= 80) return "bg-emerald-50 border-emerald-200";
-  if (n >= 60) return "bg-orange-50 border-orange-200";
+  if (n >= 60) return "bg-primary/5 border-primary/20";
   return "bg-red-50 border-red-200";
 }
 function scoreBar(n: number) {
   if (n >= 80) return "bg-emerald-500";
-  if (n >= 60) return "bg-orange-500";
+  if (n >= 60) return "bg-primary";
   return "bg-red-500";
 }
 
@@ -92,7 +92,7 @@ export default function SummaryPage() {
         </div>
         <Link
           href="/live"
-          className="rounded-xl bg-slate-950 hover:bg-orange-600 px-8 py-3.5 text-sm font-bold text-white transition-all duration-200"
+          className="rounded-xl bg-primary hover:bg-primary-hover px-8 py-3.5 text-sm font-bold text-white transition-all duration-200"
         >
           Start Live Practice
         </Link>
@@ -105,11 +105,11 @@ export default function SummaryPage() {
     <nav className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between">
       <Link href="/" className="font-extrabold text-slate-900 tracking-tight">
         PitchPilot{" "}
-        <span className="bg-gradient-to-r from-orange-500 to-black bg-clip-text text-transparent">Live</span>
+        <span className="text-primary">Live</span>
       </Link>
-      <div className="flex items-center gap-4 text-xs font-semibold">
-        <Link href="/live" className="text-slate-500 hover:text-orange-600 transition-colors">← New Session</Link>
-        <Link href="/practice" className="text-slate-500 hover:text-orange-600 transition-colors">Deep Analysis</Link>
+      <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-wider">
+        <Link href="/live" className="text-slate-500 hover:text-primary transition-colors">← New Session</Link>
+        <Link href="/practice" className="text-slate-500 hover:text-primary transition-colors">Deep Analysis</Link>
       </div>
     </nav>
   );
@@ -121,10 +121,10 @@ export default function SummaryPage() {
         <Nav />
         <div className="flex-1 flex flex-col items-center justify-center gap-5 p-6">
           <div className="relative h-14 w-14">
-            <div className="absolute inset-0 rounded-full border-2 border-orange-500/20" />
-            <div className="absolute inset-0 rounded-full border-t-2 border-orange-500 animate-spin" />
+            <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
+            <div className="absolute inset-0 rounded-full border-t-2 border-primary animate-spin" />
           </div>
-          <p className="text-sm font-semibold text-slate-700 animate-pulse">Generating your session debrief…</p>
+          <p className="text-sm font-semibold text-slate-700 animate-pulse font-display">Generating your session debrief…</p>
           <p className="text-xs text-slate-400">Gemini is reviewing your coaching history</p>
         </div>
       </div>
@@ -141,7 +141,7 @@ export default function SummaryPage() {
           {sessionData && (
             <button
               onClick={() => void generateSummary(sessionData)}
-              className="rounded-xl bg-slate-950 hover:bg-orange-600 px-8 py-3 text-sm font-bold text-white transition-all"
+              className="rounded-xl bg-primary hover:bg-primary-hover px-8 py-3 text-sm font-bold text-white transition-all"
             >
               Retry
             </button>
@@ -167,17 +167,17 @@ export default function SummaryPage() {
       <div className="border-b border-slate-100 px-6 py-8 lg:px-10 bg-slate-50/40">
         <div className="max-w-3xl">
           <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 border border-orange-200 px-3 py-1 text-xs font-bold text-orange-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               Session Debrief
             </span>
             {sessionData && (
               <span className="text-xs text-slate-400 font-medium">
-                {durationStr} · {sessionData.coachingHistory.length} coaching check-ins
+                {durationStr} · {sessionData.coachingHistory.length} checkpoints
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-2">Your Practice Summary</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 mb-2 font-display">Your Interview Prep Summary</h1>
           <p className="text-sm text-slate-500 leading-relaxed max-w-xl">{result.readinessStatement}</p>
         </div>
       </div>
@@ -206,10 +206,10 @@ export default function SummaryPage() {
               </div>
             )}
 
-            {/* Ready for demo */}
-            <div className={`rounded-2xl border p-5 flex flex-col gap-2 ${result.readyForDemo ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Demo Ready</p>
-              <p className={`text-3xl font-black ${result.readyForDemo ? "text-emerald-600" : "text-amber-600"}`}>
+            {/* Ready for Interview */}
+            <div className={`rounded-2xl border p-5 flex flex-col gap-2 ${result.readyForDemo ? "bg-emerald-50 border-emerald-200" : "bg-primary/5 border-primary/20"}`}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Interview Ready</p>
+              <p className={`text-3xl font-black ${result.readyForDemo ? "text-emerald-600" : "text-primary"}`}>
                 {result.readyForDemo ? "Yes ✓" : "Not yet"}
               </p>
             </div>
@@ -249,14 +249,14 @@ export default function SummaryPage() {
           </div>
 
           {/* Improved pitch */}
-          <div className="rounded-2xl border-l-4 border-l-orange-500 border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Improved 30-Second Pitch</p>
+          <div className="rounded-2xl border-l-4 border-l-primary border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Improved 30-Second Response</p>
             <p className="text-sm text-slate-900 leading-relaxed font-bold italic">
               &ldquo;{result.improvedPitch}&rdquo;
             </p>
             <button
               onClick={() => void navigator.clipboard.writeText(result.improvedPitch)}
-              className="mt-4 text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors"
+              className="mt-4 text-xs font-bold text-primary hover:text-primary-hover transition-colors"
             >
               Copy to clipboard →
             </button>
@@ -264,11 +264,11 @@ export default function SummaryPage() {
 
           {/* Priority fixes */}
           <div className="rounded-2xl border border-slate-950 bg-slate-950 p-6">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-orange-400 mb-4">Priority Fixes Before Demo Day</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-4">Priority Fixes Before Interview Day</p>
             <ol className="flex flex-col gap-3">
               {result.priorityFixes.map((fix, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm text-white font-semibold">
-                  <span className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-extrabold">
+                  <span className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-blue-300 text-[10px] font-extrabold">
                     {i + 1}
                   </span>
                   {fix}
@@ -299,13 +299,13 @@ export default function SummaryPage() {
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Link
               href="/live"
-              className="flex-1 text-center rounded-xl bg-slate-950 hover:bg-orange-600 py-3.5 text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] shadow-sm"
+              className="flex-1 text-center rounded-xl bg-primary hover:bg-primary-hover py-3.5 text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] shadow-sm font-display tracking-wider uppercase text-xs"
             >
               Practice Again
             </Link>
             <Link
               href="/practice"
-              className="flex-1 text-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 py-3.5 text-sm font-bold text-slate-700 transition-all duration-200"
+              className="flex-1 text-center rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 py-3.5 text-sm font-bold text-slate-700 transition-all duration-200 font-display tracking-wider uppercase text-xs"
             >
               Deep Analysis Mode
             </Link>

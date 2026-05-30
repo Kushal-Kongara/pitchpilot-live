@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,10 +12,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
-  title: "PitchPilot Live — AI Demo Coach",
+  title: "PitchPilot Live — Live Interview Reviewer & Prep Coach",
   description:
-    "Upload your slide, paste your pitch, get instant AI coaching feedback on story, clarity, and judge readiness.",
+    "Instant real-time coaching for job interviews and presentations. Get scores, posture control cues, recommendations, and live transcripts as you practice.",
 };
 
 export default function RootLayout({
@@ -26,7 +31,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-slate-900">
         {children}

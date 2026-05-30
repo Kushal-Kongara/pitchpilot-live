@@ -42,12 +42,12 @@ export default function AnalysisDashboard({
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
         <div className="relative h-12 w-12">
-          <div className="absolute inset-0 rounded-full border-2 border-orange-500/20" />
-          <div className="absolute inset-0 rounded-full border-t-2 border-orange-500 animate-spin" />
+          <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
+          <div className="absolute inset-0 rounded-full border-t-2 border-primary animate-spin" />
         </div>
-        <p className="text-sm font-semibold text-slate-700 animate-pulse">Analyzing your pitch…</p>
+        <p className="text-sm font-semibold text-slate-700 animate-pulse">Analyzing your response…</p>
         <p className="text-xs text-slate-400">
-          Checking clarity, story, and demo flow
+          Checking clarity, articulation, and content structure
         </p>
       </div>
     );
@@ -113,9 +113,9 @@ export default function AnalysisDashboard({
       <div>
         <SectionHeader>Scores</SectionHeader>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <ScoreCard title="Overall Pitch" score={result.overallScore} />
+          <ScoreCard title="Overall Score" score={result.overallScore} />
           <ScoreCard title="Clarity" score={result.clarityScore} />
-          <ScoreCard title="Demo Flow" score={result.demoFlowScore} />
+          <ScoreCard title="Delivery & Pacing" score={result.demoFlowScore} />
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export default function AnalysisDashboard({
 
       {/* Problem statement */}
       <Card>
-        <SectionHeader>Problem Statement</SectionHeader>
+        <SectionHeader>Context & Focus</SectionHeader>
         <p className="text-sm text-slate-655 leading-relaxed">
           {result.problemStatementQuality}
         </p>
@@ -144,8 +144,8 @@ export default function AnalysisDashboard({
       </Card>
 
       {/* Improved pitch */}
-      <Card className="border-l-4 border-l-orange-500">
-        <SectionHeader>Improved 30-Second Pitch</SectionHeader>
+      <Card className="border-l-4 border-l-primary">
+        <SectionHeader>Improved 30-Second Response</SectionHeader>
         <p className="text-sm text-slate-900 leading-relaxed font-bold italic">
           &ldquo;{result.improvedPitch}&rdquo;
         </p>
@@ -153,14 +153,14 @@ export default function AnalysisDashboard({
 
       {/* Judge questions */}
       <Card>
-        <SectionHeader>Likely Judge Questions</SectionHeader>
+        <SectionHeader>Likely Follow-up Questions</SectionHeader>
         <ul className="flex flex-col gap-2.5">
           {result.judgeQuestions.map((q, i) => (
             <li
               key={i}
               className="flex items-start gap-2.5 text-sm text-slate-700 font-medium"
             >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-[10px] font-extrabold">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-extrabold">
                 {i + 1}
               </span>
               {q}
