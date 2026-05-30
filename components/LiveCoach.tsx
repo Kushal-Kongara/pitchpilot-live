@@ -100,6 +100,7 @@ export default function LiveCoach() {
   const [streamingCue,  setStreamingCue]  = useState(""); // partial primaryCue while streaming
   const [permError,     setPermError]     = useState<string | null>(null);
   const [reqCount,      setReqCount]      = useState(0); // session API call counter
+  const [quotaExhausted, setQuotaExhausted] = useState(false);
 
   // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -149,6 +150,10 @@ export default function LiveCoach() {
       });
 
       if (!res.ok || !res.body) {
+        if (res.status === 429) {
+          setQuotaExhausted(true);
+          isActiveRef.current = false;
+        }
         console.error("[LiveCoach] stream HTTP error:", res.status);
         return;
       }
@@ -187,6 +192,10 @@ export default function LiveCoach() {
 
             } else if ("error" in event) {
               console.error("[LiveCoach] SSE error:", event.error);
+              if (typeof event.error === "string" && event.error.includes("429")) {
+                setQuotaExhausted(true);
+                isActiveRef.current = false;
+              }
               setIsThinking(false);
               setStreamingCue("");
             }
@@ -272,6 +281,7 @@ export default function LiveCoach() {
     startSpeechRecognition();
     isActiveRef.current = true;
     setReqCount(0);
+    setQuotaExhausted(false);
     void doCoachingCallRef.current();
     setIsActive(true);
   }
@@ -452,14 +462,22 @@ export default function LiveCoach() {
         {/* Right: score + controls */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
 
-          {/* Free tier quota indicator — gemini-2.0-flash: 15 RPM, 1500 RPD */}
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 ${G_PILL}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${reqCount >= 1400 ? "bg-red-400" : reqCount >= 1000 ? "bg-yellow-400" : "bg-emerald-400"}`} />
-            <span className="text-[10px] font-bold text-white/70">
-              {reqCount}<span className="text-white/40">/1500</span>
-            </span>
-            <span className="text-[10px] text-white/40 font-medium">daily</span>
-          </div>
+          {/* Free tier quota indicator — gemini-2.0-flash: 1500 RPD */}
+          {quotaExhausted ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 backdrop-blur-xl border border-red-500/40 rounded-full">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
+              <span className="text-[10px] font-bold text-red-300">Quota exhausted</span>
+              <span className="text-[10px] text-red-400/70 font-medium">· resets daily</span>
+            </div>
+          ) : (
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 ${G_PILL}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${reqCount >= 1400 ? "bg-red-400" : reqCount >= 1000 ? "bg-yellow-400" : "bg-emerald-400"}`} />
+              <span className="text-[10px] font-bold text-white/70">
+                {reqCount}<span className="text-white/40">/1500</span>
+              </span>
+              <span className="text-[10px] text-white/40 font-medium">daily</span>
+            </div>
+          )}
 
           {latest && (
             <div className={`flex items-center gap-2 px-3 py-1.5 ${G_PILL}`}>
