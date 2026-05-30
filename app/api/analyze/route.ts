@@ -4,7 +4,7 @@ import ai from "@/lib/gemini";
 import { SYSTEM_PROMPT } from "@/lib/prompts";
 import type { AnalysisResult, AnalyzeRequest, AnalyzeErrorResponse } from "@/lib/types";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-2.0-flash";
 
 function stripCodeFences(text: string): string {
   // Strip ```json ... ``` or ``` ... ``` wrappers Gemini sometimes adds

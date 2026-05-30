@@ -8,7 +8,7 @@ import type {
   AnalyzeErrorResponse,
 } from "@/lib/types";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-2.0-flash";
 
 function stripCodeFences(text: string): string {
   return text
