@@ -24,6 +24,10 @@ interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number;
   readonly results: SpeechRecognitionResultList;
 }
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+  readonly message: string;
+}
 interface ISpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
@@ -31,7 +35,7 @@ interface ISpeechRecognition extends EventTarget {
   start(): void;
   stop(): void;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: Event) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
   onend: (() => void) | null;
 }
 interface ISpeechRecognitionConstructor {
@@ -136,7 +140,15 @@ export default function LiveCoach() {
     if (isFetchingRef.current) return;
     const text = hasSpeech ? transcriptRef.current : manualTextRef.current;
     const imageBase64 = captureFrame();
-    if (!text.trim() && !imageBase64) return;
+
+    // Nothing to send yet — video still initializing or transcript empty.
+    // Keep loop alive instead of dying silently.
+    if (!text.trim() && !imageBase64) {
+      if (isActiveRef.current) {
+        setTimeout(() => { void doCoachingCallRef.current(); }, 600);
+      }
+      return;
+    }
 
     isFetchingRef.current = true;
     setIsThinking(true);
@@ -146,7 +158,10 @@ export default function LiveCoach() {
       const res = await fetch("/api/live-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: text.trim(), imageBase64: imageBase64 ?? "", mimeType: "image/jpeg" }),
+        body: JSON.stringify({
+          transcript: text.trim(),
+          ...(imageBase64 ? { imageBase64, mimeType: "image/jpeg" } : {}),
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -261,8 +276,22 @@ export default function LiveCoach() {
       if (fin) { transcriptRef.current += fin; setTranscript(transcriptRef.current); }
       setInterimText(interim);
     };
-    rec.onerror = (e: Event) => console.error("[LiveCoach] speech:", e);
-    rec.onend = () => { if (streamRef.current) { try { rec.start(); } catch { /* ignore */ } } };
+    let fatalError = false;
+    rec.onerror = (e: SpeechRecognitionErrorEvent) => {
+      // no-speech fires every ~8s when silent — expected, not an error
+      if (e.error === "no-speech") return;
+      // These errors mean we can't use speech recognition at all — stop retrying
+      if (e.error === "not-allowed" || e.error === "audio-capture" || e.error === "service-not-allowed") {
+        fatalError = true;
+        setHasSpeech(false);
+      }
+      console.error("[LiveCoach] speech error:", e.error);
+    };
+    rec.onend = () => {
+      if (streamRef.current && !fatalError) {
+        try { rec.start(); } catch { /* already restarting */ }
+      }
+    };
     rec.start();
     recognitionRef.current = rec;
   }

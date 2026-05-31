@@ -35,17 +35,30 @@ export async function POST(req: NextRequest) {
   if (typeof transcript !== "string") {
     return NextResponse.json<AnalyzeErrorResponse>({ error: "transcript required." }, { status: 400 });
   }
-  if (!imageBase64 || typeof imageBase64 !== "string") {
-    return NextResponse.json<AnalyzeErrorResponse>({ error: "imageBase64 required." }, { status: 400 });
-  }
-  if (!mimeType || typeof mimeType !== "string") {
-    return NextResponse.json<AnalyzeErrorResponse>({ error: "mimeType required." }, { status: 400 });
+
+  const hasImage = typeof imageBase64 === "string" && imageBase64.length > 0;
+  if (hasImage && (!mimeType || typeof mimeType !== "string")) {
+    return NextResponse.json<AnalyzeErrorResponse>({ error: "mimeType required when imageBase64 provided." }, { status: 400 });
   }
 
-  const userText =
-    transcript.trim().length > 0
-      ? `Transcript so far:\n\n"${transcript.trim()}"\n\nAnalyze the transcript and camera frame together. Return real-time coaching JSON.`
-      : `Presenter has not spoken yet. Analyze only the camera frame. Return real-time coaching JSON.`;
+  if (!transcript.trim() && !hasImage) {
+    return NextResponse.json<AnalyzeErrorResponse>({ error: "Provide transcript or imageBase64." }, { status: 400 });
+  }
+
+  let userText: string;
+  if (transcript.trim() && hasImage) {
+    userText = `Transcript so far:\n\n"${transcript.trim()}"\n\nAnalyze the transcript and camera frame together. Return real-time coaching JSON.`;
+  } else if (transcript.trim()) {
+    userText = `Transcript so far:\n\n"${transcript.trim()}"\n\nNo camera frame available — analyze speech delivery only. Return real-time coaching JSON.`;
+  } else {
+    userText = `Presenter has not spoken yet. Analyze only the camera frame. Return real-time coaching JSON.`;
+  }
+
+  const parts = [
+    createPartFromText(LIVE_COACH_PROMPT),
+    createPartFromText(userText),
+    ...(hasImage ? [createPartFromBase64(imageBase64!, mimeType!)] : []),
+  ];
 
   // Init stream — if this throws, return a regular HTTP error before SSE headers are sent
   let geminiStream: Awaited<ReturnType<typeof ai.models.generateContentStream>>;
@@ -54,16 +67,16 @@ export async function POST(req: NextRequest) {
       model: MODEL,
       contents: [{
         role: "user",
-        parts: [
-          createPartFromText(LIVE_COACH_PROMPT),
-          createPartFromText(userText),
-          createPartFromBase64(imageBase64, mimeType),
-        ],
+        parts,
       }],
     });
   } catch (err) {
     console.error("[LiveStream] Gemini init:", err);
-    return NextResponse.json<AnalyzeErrorResponse>({ error: "AI stream failed to start." }, { status: 500 });
+    const is429 = String(err).includes("429") || String(err).includes("RESOURCE_EXHAUSTED");
+    return NextResponse.json<AnalyzeErrorResponse>(
+      { error: is429 ? "Quota exceeded." : "AI stream failed to start." },
+      { status: is429 ? 429 : 500 }
+    );
   }
 
   const encoder = new TextEncoder();
@@ -92,7 +105,11 @@ export async function POST(req: NextRequest) {
         }
       } catch (e) {
         console.error("[LiveStream] stream error:", e);
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(e) })}\n\n`));
+        const msg = String(e);
+        const errPayload = (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED"))
+          ? { error: "429: Quota exceeded." }
+          : { error: msg };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(errPayload)}\n\n`));
       } finally {
         controller.close();
       }

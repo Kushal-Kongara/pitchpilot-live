@@ -249,90 +249,108 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          {/* Expanded About Detail Rows */}
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-12 border-t-2 border-blue-900/10 pt-16">
+            {/* Expanded block 1 */}
+            <div className="flex flex-col gap-4">
+              <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-widest">01.1 // HOW IT WORKS</span>
+              <h3 className="text-2xl font-extrabold text-blue-900 uppercase font-display">Continuous Vision & Voice Capture</h3>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                While your camera is active, PitchPilot Live captures visual frames dynamically. We feed these frames alongside your running speech transcript directly into Gemini 2.5 Flash, analyzing shoulder alignment, posture slumps, and eye contact in one single cognitive context.
+              </p>
+              <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                At the same time, browser-level speech recognition tracks your spoken words. This is evaluated live, ensuring you get immediate recommendations before you even finish your next sentence.
+              </p>
+            </div>
+
+            {/* Expanded block 2 */}
+            <div className="flex flex-col gap-4">
+              <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-widest">01.2 // TARGET BENCHMARKS</span>
+              <h3 className="text-2xl font-extrabold text-blue-900 uppercase font-display">Optimal Performance Goals</h3>
+              
+              <ul className="flex flex-col gap-3">
+                <li className="flex gap-3 text-sm text-slate-700 font-medium">
+                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-blue-900 text-[10px] font-bold">1</span>
+                  <span><strong>Eye Level:</strong> Keep the camera at eye-level to project confidence and maintain virtual eye contact with the interviewer.</span>
+                </li>
+                <li className="flex gap-3 text-sm text-slate-700 font-medium">
+                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-blue-900 text-[10px] font-bold">2</span>
+                  <span><strong>Posture Stability:</strong> Slouching reduces breathing depth and vocal resonance. Sit up straight and align your shoulders.</span>
+                </li>
+                <li className="flex gap-3 text-sm text-slate-700 font-medium">
+                  <span className="shrink-0 flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-blue-900 text-[10px] font-bold">3</span>
+                  <span><strong>Speaking Pace:</strong> Aim for a steady 130 to 150 WPM (Words Per Minute). Slow down deliberately to highlight key achievements.</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="border-t-2 border-blue-950 px-6 py-24 bg-cream relative text-white">
-        <div className="mx-auto max-w-xl">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-primary font-mono block mb-2">02 / Contact</span>
-            <h2 className="text-4xl font-extrabold uppercase tracking-tight text-white font-display">
-              Get In Touch
-            </h2>
-            <p className="text-xs text-white/80 font-semibold uppercase tracking-wider mt-2">
-              Have questions or feedback? Drop us a line.
-            </p>
+      {/* Footer containing Compact Contact Form */}
+      <footer className="border-t-2 border-blue-950 bg-blue-950 px-6 py-12 text-white">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          
+          {/* Left: Compact Contact Form */}
+          <div className="flex flex-col gap-4 max-w-md w-full">
+            <h3 className="text-xs font-mono font-bold tracking-widest text-primary uppercase">02 / Contact Us</h3>
+            <p className="text-xs text-white/70">Have questions or feedback? Send us a quick note directly from here.</p>
+            <form onSubmit={handleContactSubmit} className="flex flex-col gap-3 text-blue-900">
+              {formSubmitted && (
+                <div className="bg-emerald-50 border border-emerald-500 text-emerald-800 p-2 text-[10px] font-bold text-center">
+                  MESSAGE SENT SUCCESSFULLY!
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  required
+                  placeholder="Name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-white border border-blue-900 p-2 text-xs focus:outline-none focus:border-primary rounded-none"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="bg-white border border-blue-900 p-2 text-xs focus:outline-none focus:border-primary rounded-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="Your message..."
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  className="flex-1 bg-white border border-blue-900 p-2 text-xs focus:outline-none focus:border-primary rounded-none"
+                />
+                <button
+                  type="submit"
+                  className="bg-primary border border-black text-black px-4 text-[10px] font-bold uppercase tracking-widest shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-primary-hover active:translate-y-0.5 rounded-none transition-colors"
+                >
+                  Send
+                </button>
+              </div>
+            </form>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleContactSubmit} className="border-2 border-black p-8 bg-white text-blue-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-6">
-            {formSubmitted ? (
-              <div className="bg-emerald-50 border-2 border-emerald-500 text-emerald-800 p-4 text-xs font-bold text-center">
-                THANK YOU! YOUR MESSAGE WAS SUBMITTED SUCCESSFULLY.
-              </div>
-            ) : null}
-
-            <div className="flex flex-col gap-1.5 text-left">
-              <label htmlFor="name" className="text-[10px] font-bold uppercase tracking-widest text-blue-900/70">
-                Your Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="John Doe"
-                className="w-full border-2 border-slate-200 focus:border-blue-500 p-3 text-sm focus:outline-none bg-slate-50 rounded-none transition-colors"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5 text-left">
-              <label htmlFor="email" className="text-[10px] font-bold uppercase tracking-widest text-blue-900/70">
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john@example.com"
-                className="w-full border-2 border-slate-200 focus:border-blue-500 p-3 text-sm focus:outline-none bg-slate-50 rounded-none transition-colors"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5 text-left">
-              <label htmlFor="message" className="text-[10px] font-bold uppercase tracking-widest text-blue-900/70">
-                Your Message
-              </label>
-              <textarea
-                id="message"
-                required
-                rows={4}
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                placeholder="Tell us what you think..."
-                className="w-full border-2 border-slate-200 focus:border-blue-500 p-3 text-sm focus:outline-none bg-slate-50 rounded-none transition-colors resize-none"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="bg-primary border-2 border-black text-black text-xs font-bold uppercase tracking-widest py-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-primary-hover transition-colors duration-200 mt-2"
-            >
-              Send Message
-            </button>
-          </form>
+          {/* Right: Branding & Copyright */}
+          <div className="flex flex-col items-center md:items-end justify-center text-center md:text-right gap-3">
+            <span className="font-display font-extrabold text-xl tracking-tight uppercase text-white">
+              PitchPilot <span className="text-primary font-normal font-sans">Live</span>
+            </span>
+            <p className="text-[10px] font-medium text-white/50 max-w-sm leading-relaxed">
+              PitchPilot Live is an interactive, real-time prep coach utilizing the Gemini Pro multimodal context to grade interview delivery, speech clarity, and posture.
+            </p>
+            <p className="text-[10px] text-white/40 mt-4">&copy; {new Date().getFullYear()} PitchPilot. All rights reserved.</p>
+          </div>
+          
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t-2 border-blue-950 bg-blue-950 px-6 py-10 text-center text-[10px] font-bold uppercase tracking-widest text-white/70">
-        <p className="mb-2">PitchPilot Live — Real-time Interview Review & Prep Coach</p>
-        <p className="text-white/40">&copy; {new Date().getFullYear()} PitchPilot. All rights reserved.</p>
       </footer>
     </main>
   );
