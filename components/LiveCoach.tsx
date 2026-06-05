@@ -145,7 +145,7 @@ export default function LiveCoach() {
     // Keep loop alive instead of dying silently.
     if (!text.trim() && !imageBase64) {
       if (isActiveRef.current) {
-        setTimeout(() => { void doCoachingCallRef.current(); }, 2000);
+        setTimeout(() => { void doCoachingCallRef.current(); }, 500);
       }
       return;
     }
@@ -227,7 +227,7 @@ export default function LiveCoach() {
       setStreamingCue("");
       setReqCount((n) => n + 1);
       if (isActiveRef.current) {
-        setTimeout(() => { void doCoachingCallRef.current(); }, 5000);
+        setTimeout(() => { void doCoachingCallRef.current(); }, 2000);
       }
     }
   };
