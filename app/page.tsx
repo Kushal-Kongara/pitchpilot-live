@@ -99,7 +99,7 @@ export default function Home() {
             </div>
 
             <div className="mt-4 flex flex-col gap-1 items-center lg:items-start">
-              <span className="text-[10px] text-white/60 font-semibold tracking-wider uppercase">Free to use · Powered by Gemini 2.0 Flash</span>
+              <span className="text-[10px] text-white/60 font-semibold tracking-wider uppercase">Free to use · Powered by Gemini 2.5 Flash</span>
             </div>
           </div>
 

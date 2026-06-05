@@ -4,7 +4,7 @@ import ai from "@/lib/gemini";
 import { LIVE_COACH_PROMPT } from "@/lib/prompts";
 import type { LiveCoachRequest, AnalyzeErrorResponse, LiveCoachResult } from "@/lib/types";
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash";
 
 function stripCodeFences(text: string): string {
   return text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();

@@ -570,33 +570,21 @@ export default function LiveCoach() {
         )}
       </div>
 
-      {/* ══ COACHING BUBBLES — right side ════════════════════════════════ */}
-      {latest && latest.result.coachingBubbles.length > 0 && (
-        <div className="absolute right-6 top-20 bottom-36 flex flex-col justify-center gap-2.5 max-w-[180px] sm:max-w-[200px]">
+      {/* ══ RIGHT PANEL — bubbles (top) + next action (bottom) ══════════ */}
+      {latest && (
+        <div className="absolute right-6 top-20 bottom-[88px] flex flex-col gap-2.5 max-w-[200px] sm:max-w-[220px] overflow-hidden">
+          {/* Coaching bubbles — stack from top */}
           {latest.result.coachingBubbles.map((bubble, i) => (
-            <div key={i} className={`px-4 py-2.5 ${G_SM}`}>
+            <div key={i} className={`px-4 py-2.5 ${G_SM} shrink-0`}>
               <p className="text-sm font-semibold text-white/90 leading-snug">{bubble}</p>
             </div>
           ))}
-        </div>
-      )}
 
-      {/* ══ PREVIOUS CUES — faded right strip ════════════════════════════ */}
-      {entries.length > 1 && (
-        <div className="absolute right-6 flex flex-col gap-1.5 max-w-[180px]"
-          style={{ top: `${20 + (latest?.result.coachingBubbles.length ?? 0) * 54 + 80}px` }}>
-          {entries.slice(1, 3).map((e) => (
-            <div key={e.id} className={`px-3 py-1.5 opacity-40 ${G_SM}`}>
-              <p className="text-[11px] font-semibold text-white/70 truncate">→ {e.result.primaryCue}</p>
-            </div>
-          ))}
-        </div>
-      )}
+          {/* Spacer pushes next action to bottom */}
+          <div className="flex-1" />
 
-      {/* ══ NEXT BEST ACTION — bottom-right ══════════════════════════════ */}
-      {latest && (
-        <div className="absolute bottom-[88px] right-6 max-w-[220px] sm:max-w-[260px]">
-          <div className={`p-4 ${G_CARD}`}>
+          {/* Next best action pinned at bottom of right panel */}
+          <div className={`p-4 ${G_CARD} shrink-0`}>
             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-1.5">Next</p>
             <p className="text-sm font-bold text-white leading-snug">{latest.result.nextBestAction}</p>
           </div>
