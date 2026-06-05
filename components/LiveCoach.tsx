@@ -60,18 +60,57 @@ interface SseDone   { done: true; r: LiveCoachResult }
 interface SseError  { error: string }
 type SseEvent = SseToken | SseDone | SseError;
 
-// ── Glass tokens ─────────────────────────────────────────────────────────────
-const G_CARD = "bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl";
-const G_SM   = "bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl";
-const G_PILL = "bg-black/40 backdrop-blur-xl border border-white/10 rounded-full";
+// ── Glass tokens — light so video shows through ──────────────────────────────
+const G_PILL = "hud-glass rounded-full hud-text-shadow";
 const G_BTN  =
-  "bg-black/40 backdrop-blur-xl border border-white/10 rounded-full px-3.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 transition-all duration-150 select-none cursor-pointer";
+  "hud-glass rounded-full px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/10 transition-all duration-150 select-none cursor-pointer hud-text-shadow";
 
-// ── Partial JSON helpers ─────────────────────────────────────────────────────
-// Extracts the partially-built "primaryCue" value as tokens stream in.
+const NEUTRAL_WARNING = "Looking clear and aligned.";
+const IS_DEV = process.env.NODE_ENV === "development";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function extractPartialCue(partial: string): string {
   const m = /"primaryCue"\s*:\s*"([^"]*)/.exec(partial);
   return m?.[1] ?? "";
+}
+
+function scoreRingStroke(n: number): string {
+  if (n >= 80) return "#34d399";
+  if (n >= 60) return "#FFC82C";
+  return "#f87171";
+}
+
+function scoreTextClass(n: number): string {
+  if (n >= 80) return "text-emerald-400";
+  if (n >= 60) return "text-primary";
+  return "text-red-400";
+}
+
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function lastWords(text: string, count: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= count) return text.trim();
+  return "…" + words.slice(-count).join(" ");
+}
+
+function getQuickTips(
+  bubbles: string[],
+  primaryCue: string,
+  nextBestAction: string,
+  max = 2,
+): string[] {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const exclude = new Set([norm(primaryCue), norm(nextBestAction)]);
+  return bubbles.filter((b) => b.trim() && !exclude.has(norm(b))).slice(0, max);
+}
+
+function isNeutralWarning(warning: string): boolean {
+  return warning.trim().toLowerCase() === NEUTRAL_WARNING.toLowerCase();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -81,6 +120,9 @@ export default function LiveCoach() {
   // ── DOM refs ─────────────────────────────────────────────────────────────
   const videoRef  = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const menuRef     = useRef<HTMLDivElement>(null);
+  const lastCueRef    = useRef("");
+  const prevEntryIdRef = useRef<number | null>(null);
 
   // ── Session refs ──────────────────────────────────────────────────────────
   const streamRef       = useRef<MediaStream | null>(null);
@@ -90,28 +132,51 @@ export default function LiveCoach() {
   const isActiveRef     = useRef(false);
   const transcriptRef   = useRef("");
   const manualTextRef   = useRef("");
-  const sessionStartRef = useRef(0); // timestamp ms
+  const sessionStartRef = useRef(0);
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [isActive,      setIsActive]      = useState(false);
-  const [isScreenShare, setIsScreenShare] = useState(false);
-  const [hasSpeech,     setHasSpeech]     = useState(false);
-  const [transcript,    setTranscript]    = useState("");
-  const [interimText,   setInterimText]   = useState("");
-  const [manualText,    setManualText]    = useState("");
-  const [entries,       setEntries]       = useState<CoachingEntry[]>([]);
-  const [isThinking,    setIsThinking]    = useState(false);
-  const [streamingCue,  setStreamingCue]  = useState(""); // partial primaryCue while streaming
-  const [permError,     setPermError]     = useState<string | null>(null);
-  const [reqCount,      setReqCount]      = useState(0); // session API call counter
-  const [quotaExhausted, setQuotaExhausted] = useState(false);
+  const [isActive,           setIsActive]           = useState(false);
+  const [isScreenShare,      setIsScreenShare]      = useState(false);
+  const [hasSpeech,          setHasSpeech]          = useState(false);
+  const [transcript,         setTranscript]         = useState("");
+  const [interimText,        setInterimText]        = useState("");
+  const [manualText,         setManualText]         = useState("");
+  const [entries,            setEntries]            = useState<CoachingEntry[]>([]);
+  const [isThinking,         setIsThinking]         = useState(false);
+  const [streamingCue,       setStreamingCue]       = useState("");
+  const [permError,          setPermError]          = useState<string | null>(null);
+  const [reqCount,           setReqCount]           = useState(0);
+  const [quotaExhausted,     setQuotaExhausted]     = useState(false);
+  const [countdown,          setCountdown]          = useState<number | null>(null);
+  const [transcriptExpanded, setTranscriptExpanded] = useState(false);
+  const [menuOpen,           setMenuOpen]           = useState(false);
+  const [focusMode,          setFocusMode]          = useState(false);
+  const [elapsed,            setElapsed]            = useState(0);
+  const [warningVisible,     setWarningVisible]     = useState(false);
+  const [cueAnimKey,         setCueAnimKey]         = useState(0);
+
+  const entriesRef = useRef(entries);
+  entriesRef.current = entries;
 
   // ── Init ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     setHasSpeech(!!(window.SpeechRecognition ?? window.webkitSpeechRecognition));
   }, []);
 
-  // Reattach stream when HUD mounts (new <video> element created)
+  // Countdown before session starts
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) {
+      setCountdown(null);
+      void startLive();
+      return;
+    }
+    const t = setTimeout(() => setCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown]);
+
+  // Reattach stream when HUD mounts
   useEffect(() => {
     if (!isActive || !videoRef.current) return;
     const src = screenStreamRef.current ?? streamRef.current;
@@ -128,21 +193,76 @@ export default function LiveCoach() {
     }
   }, [isScreenShare]);
 
+  // Session elapsed timer
+  useEffect(() => {
+    if (!isActive) return;
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - sessionStartRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isActive]);
+
+  // Warning toast auto-dismiss
+  useEffect(() => {
+    if (!warningVisible) return;
+    const t = setTimeout(() => setWarningVisible(false), 6000);
+    return () => clearTimeout(t);
+  }, [warningVisible, entries[0]?.id]);
+
+  // Close overflow menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
+
+  // Cue crossfade when coaching updates
+  useEffect(() => {
+    const current = entries[0];
+    if (!current) return;
+    if (current.id === prevEntryIdRef.current) return;
+    const prevCue = entries[1]?.result.primaryCue;
+    if (current.result.primaryCue !== prevCue) {
+      setCueAnimKey((k) => k + 1);
+    }
+    prevEntryIdRef.current = current.id;
+  }, [entries]);
+
+  // Keyboard shortcuts during active session
+  useEffect(() => {
+    if (!isActive) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        stopLive();
+      } else if (e.key === "t" || e.key === "T") {
+        setTranscriptExpanded((v) => !v);
+      } else if (e.key === "m" || e.key === "M") {
+        setMenuOpen((v) => !v);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => { cleanupSession(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Coaching call (SSE streaming) — ref updated every render ─────────────
+  // ── Coaching call (SSE streaming) ─────────────────────────────────────────
   const doCoachingCallRef = useRef<() => Promise<void>>(async () => {});
   doCoachingCallRef.current = async function doCoachingCall() {
     if (isFetchingRef.current) return;
     const text = hasSpeech ? transcriptRef.current : manualTextRef.current;
     const imageBase64 = captureFrame();
 
-    // Nothing to send yet — video still initializing or transcript empty.
-    // Keep loop alive instead of dying silently.
     if (!text.trim() && !imageBase64) {
       if (isActiveRef.current) {
         setTimeout(() => { void doCoachingCallRef.current(); }, 500);
@@ -194,16 +314,18 @@ export default function LiveCoach() {
             const event = JSON.parse(jsonStr) as SseEvent;
 
             if ("t" in event && typeof event.t === "string") {
-              // Token chunk — extract partial primaryCue for live display
               partialJson += event.t;
               const partial = extractPartialCue(partialJson);
               if (partial) setStreamingCue(partial);
 
             } else if ("done" in event && event.done && "r" in event) {
-              // Complete result received
               setEntries((prev) => [{ id: Date.now(), result: event.r }, ...prev.slice(0, 4)]);
               setStreamingCue("");
               setIsThinking(false);
+
+              if (!isNeutralWarning(event.r.clarityWarning)) {
+                setWarningVisible(true);
+              }
 
             } else if ("error" in event) {
               console.error("[LiveCoach] SSE error:", event.error);
@@ -215,7 +337,7 @@ export default function LiveCoach() {
               setStreamingCue("");
             }
           } catch {
-            // Incomplete SSE line — wait for more data
+            // Incomplete SSE line
           }
         }
       }
@@ -232,7 +354,6 @@ export default function LiveCoach() {
     }
   };
 
-  // ── Frame capture ─────────────────────────────────────────────────────────
   function captureFrame(): string | null {
     const v = videoRef.current, c = canvasRef.current;
     if (!v || !c || v.readyState < 2) return null;
@@ -244,7 +365,6 @@ export default function LiveCoach() {
     return c.toDataURL("image/jpeg", 0.75).split(",")[1] ?? null;
   }
 
-  // ── Session lifecycle ─────────────────────────────────────────────────────
   function cleanupSession() {
     isActiveRef.current = false;
     if (recognitionRef.current) {
@@ -278,12 +398,11 @@ export default function LiveCoach() {
     };
     let fatalError = false;
     rec.onerror = (e: SpeechRecognitionErrorEvent) => {
-      // no-speech fires every ~8s when silent — expected, not an error
       if (e.error === "no-speech") return;
-      // These errors mean we can't use speech recognition at all — stop retrying
       if (e.error === "not-allowed" || e.error === "audio-capture" || e.error === "service-not-allowed") {
         fatalError = true;
         setHasSpeech(false);
+        setTranscriptExpanded(true);
       }
       console.error("[LiveCoach] speech error:", e.error);
     };
@@ -299,10 +418,13 @@ export default function LiveCoach() {
   async function startLive() {
     setPermError(null);
     setEntries([]);
+    lastCueRef.current = "";
+    prevEntryIdRef.current = null;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: hasSpeech });
       streamRef.current = stream;
       sessionStartRef.current = Date.now();
+      setElapsed(0);
     } catch {
       setPermError("Camera access denied. Allow camera permissions in your browser and try again.");
       return;
@@ -311,14 +433,17 @@ export default function LiveCoach() {
     isActiveRef.current = true;
     setReqCount(0);
     setQuotaExhausted(false);
+    setTranscriptExpanded(!hasSpeech);
+    setFocusMode(false);
+    setMenuOpen(false);
+    setWarningVisible(false);
     void doCoachingCallRef.current();
     setIsActive(true);
   }
 
   function stopLive() {
-    // Capture state before cleanup clears it
-    const capturedTranscript = transcript;
-    const capturedEntries = [...entries];
+    const capturedTranscript = hasSpeech ? transcriptRef.current : manualTextRef.current;
+    const capturedEntries = [...entriesRef.current];
     const durationSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
 
     cleanupSession();
@@ -326,9 +451,9 @@ export default function LiveCoach() {
     setIsScreenShare(false);
     setInterimText("");
     setStreamingCue("");
+    setMenuOpen(false);
     isFetchingRef.current = false;
 
-    // Navigate to summary if there's something to show
     if (capturedEntries.length > 0) {
       try {
         const sessionData: SessionData = {
@@ -339,7 +464,7 @@ export default function LiveCoach() {
         sessionStorage.setItem("pitchpilot_session", JSON.stringify(sessionData));
         router.push("/summary");
       } catch {
-        // sessionStorage unavailable (private mode, etc.) — stay on page
+        // sessionStorage unavailable
       }
     }
   }
@@ -350,6 +475,7 @@ export default function LiveCoach() {
     setTranscript("");
     setManualText("");
     setInterimText("");
+    setMenuOpen(false);
   }
 
   async function startScreenShare() {
@@ -360,6 +486,7 @@ export default function LiveCoach() {
       const track = stream.getVideoTracks()[0];
       if (track) track.onended = () => switchToCamera();
       setIsScreenShare(true);
+      setMenuOpen(false);
     } catch { /* user cancelled */ }
   }
 
@@ -367,37 +494,85 @@ export default function LiveCoach() {
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current = null;
     setIsScreenShare(false);
+    setMenuOpen(false);
+  }
+
+  function handleStartClick() {
+    setCountdown(3);
   }
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const latest = entries[0] ?? null;
-  // Show streaming partial cue while receiving, then snap to full result
-  const displayCue = streamingCue || latest?.result.primaryCue;
+  const prevEntry = entries[1] ?? null;
+
+  let displayCue = streamingCue || latest?.result.primaryCue || "";
+  if (!streamingCue && latest) {
+    const newCue = latest.result.primaryCue;
+    const prevCue = entries[1]?.result.primaryCue;
+    if (newCue === prevCue && lastCueRef.current) {
+      displayCue = lastCueRef.current;
+    } else {
+      lastCueRef.current = newCue;
+      displayCue = newCue;
+    }
+  }
+
+  const quickTips = latest && !focusMode
+    ? getQuickTips(
+        latest.result.coachingBubbles,
+        latest.result.primaryCue,
+        latest.result.nextBestAction,
+      )
+    : [];
+
+  const scoreDelta = latest && prevEntry
+    ? latest.result.deliveryScore - prevEntry.result.deliveryScore
+    : null;
+
+  const showWarningToast = warningVisible && latest && !isNeutralWarning(latest.result.clarityWarning);
+
+  const transcriptFull = hasSpeech
+    ? `${transcript}${interimText ? ` ${interimText}` : ""}`.trim()
+    : manualText;
+
+  const transcriptCollapsed = hasSpeech && !transcriptExpanded && !focusMode;
 
   // ═══════════════════════════════════════════════════════════════════════════
   // IDLE SCREEN
   // ═══════════════════════════════════════════════════════════════════════════
   if (!isActive) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 py-12 px-6 text-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 shadow-sm">
-          <svg className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <div className="relative flex flex-col items-center justify-center min-h-[50vh] gap-5 py-8 px-4 sm:py-12 sm:px-6 text-center">
+        {countdown !== null && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-sm font-bold uppercase tracking-widest text-white/60">Get ready</p>
+              <span className="text-6xl sm:text-8xl font-black text-primary font-display tabular-nums animate-cue-fade-in">
+                {countdown}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20">
+          <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
           </svg>
         </div>
 
-        <div className="flex flex-col gap-3 max-w-sm">
-          <h2 className="text-2xl font-extrabold text-slate-900">Start when you&apos;re ready.</h2>
+        <div className="flex flex-col gap-2 max-w-sm">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">Ready to practice?</h2>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Your camera fills the screen. PitchPilot Live reviews your posture, tracks your pacing, and drops
-            coaching recommendations continuously as you speak.
+            Speak naturally — coaching cues appear on screen as you go.
           </p>
-          {!hasSpeech && (
-            <p className="text-xs text-primary font-medium">
-              Speech recognition not available in this browser.
-              You&apos;ll type your responses in the transcript bar.
-            </p>
-          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <span>Camera</span>
+          <span className="text-slate-300">·</span>
+          <span>Mic</span>
+          <span className="text-slate-300">·</span>
+          <span>{hasSpeech ? "Speech" : "Manual input"}</span>
         </div>
 
         {permError && (
@@ -406,16 +581,19 @@ export default function LiveCoach() {
           </div>
         )}
 
+        {!hasSpeech && (
+          <p className="text-xs text-primary font-medium max-w-sm">
+            Speech recognition unavailable — you&apos;ll type responses during the session.
+          </p>
+        )}
+
         <button
-          onClick={startLive}
-          className="rounded-2xl bg-primary hover:bg-primary-hover px-10 py-4 text-sm font-bold text-white shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all duration-200 hover:scale-[1.03]"
+          onClick={handleStartClick}
+          disabled={countdown !== null}
+          className="w-full max-w-xs sm:w-auto rounded-2xl bg-primary hover:bg-primary-hover px-8 sm:px-10 py-4 text-sm font-bold text-white shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all duration-200 hover:scale-[1.03] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 min-h-[48px]"
         >
           Start Live Practice
         </button>
-
-        <p className="text-xs text-slate-400">
-          Camera + mic accessed on start. Session summary generated on Stop.
-        </p>
       </div>
     );
   }
@@ -423,10 +601,11 @@ export default function LiveCoach() {
   // ═══════════════════════════════════════════════════════════════════════════
   // FULL-SCREEN PRESENTER HUD
   // ═══════════════════════════════════════════════════════════════════════════
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black">
+  const scoreCircumference = 2 * Math.PI * 18;
 
-      {/* Video background */}
+  return (
+    <div className="fixed inset-0 z-50 overflow-hidden bg-black safe-x">
+
       <video
         ref={videoRef}
         autoPlay
@@ -436,197 +615,258 @@ export default function LiveCoach() {
       />
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Gradient vignette */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-black/5 to-black/75" />
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/30 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-black/30 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/35" />
 
       {/* ══ TOP BAR ══════════════════════════════════════════════════════ */}
-      <div className="absolute top-0 left-0 right-0 flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+      <div className="absolute top-0 left-0 right-0 flex items-center justify-between gap-1.5 sm:gap-3 px-3 sm:px-5 safe-top pb-2 z-20">
 
-        {/* Left: branding + status */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className={`flex items-center gap-2 px-3.5 py-1.5 ${G_PILL}`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            <span className="text-xs font-extrabold text-white tracking-tight">
-              PitchPilot <span className="text-blue-300">Live</span>
-            </span>
-          </div>
-
-          <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white ${G_PILL}`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-            LIVE
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+          <span className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-bold text-white shrink-0 ${G_PILL}`}>
+            <span className="h-1.5 sm:h-2 w-1.5 sm:w-2 rounded-full bg-red-500 animate-pulse drop-shadow-md" />
+            <span className="hud-text-shadow">LIVE</span>
           </span>
-
-          <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-200 ${G_PILL}`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse" />
-            Posture Control
+          <span className="text-[10px] sm:text-xs font-mono font-semibold text-white/80 tabular-nums hud-text-shadow">
+            {formatElapsed(elapsed)}
           </span>
-
-          {isScreenShare && (
-            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-300 ${G_PILL}`}>
-              🖥 Screen
-            </span>
-          )}
-
-          {/* Streaming indicator */}
-          {isThinking && (
-            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-blue-300 ${G_PILL}`}>
-              <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-              </svg>
-              Reviewing…
-            </span>
-          )}
-
-          {hasSpeech && !isThinking && (
-            <span className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-300 ${G_PILL}`}>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Listening
-            </span>
-          )}
         </div>
 
-        {/* Right: score + controls */}
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
 
-          {/* Free tier quota indicator — gemini-2.0-flash: 1500 RPD */}
-          {quotaExhausted ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 backdrop-blur-xl border border-red-500/40 rounded-full">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
-              <span className="text-[10px] font-bold text-red-300">Quota exhausted</span>
-              <span className="text-[10px] text-red-400/70 font-medium">· resets daily</span>
-            </div>
-          ) : (
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 ${G_PILL}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${reqCount >= 1400 ? "bg-red-400" : reqCount >= 1000 ? "bg-yellow-400" : "bg-emerald-400"}`} />
-              <span className="text-[10px] font-bold text-white/70">
-                {reqCount}<span className="text-white/40">/1500</span>
-              </span>
-              <span className="text-[10px] text-white/40 font-medium">daily</span>
-            </div>
+          {quotaExhausted && (
+            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 backdrop-blur-xl border border-red-500/40 rounded-full text-[10px] font-bold text-red-300">
+              Quota exhausted
+            </span>
           )}
 
           {latest && (
-            <div className={`flex items-center gap-2 px-3 py-1.5 ${G_PILL}`}>
-              <div className="relative h-7 w-7 shrink-0">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 28 28">
-                  <circle cx="14" cy="14" r="11" stroke="rgba(255,255,255,0.12)" strokeWidth="2.5" fill="none" />
+            <div className={`flex items-center gap-1.5 sm:gap-2.5 px-2 sm:px-3 py-1.5 ${G_PILL}`}>
+              <div className="relative h-8 w-8 sm:h-10 sm:w-10 shrink-0">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 40 40">
+                  <circle cx="20" cy="20" r="18" stroke="rgba(255,255,255,0.12)" strokeWidth="3" fill="none" />
                   <circle
-                    cx="14" cy="14" r="11"
-                    stroke="#1A1AA7" strokeWidth="2.5" fill="none"
-                    strokeDasharray={69.12}
-                    strokeDashoffset={69.12 - (69.12 * latest.result.deliveryScore) / 100}
+                    cx="20" cy="20" r="18"
+                    stroke={scoreRingStroke(latest.result.deliveryScore)}
+                    strokeWidth="3" fill="none"
+                    strokeDasharray={scoreCircumference}
+                    strokeDashoffset={scoreCircumference - (scoreCircumference * latest.result.deliveryScore) / 100}
                     strokeLinecap="round"
                     className="transition-all duration-700"
                   />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[9px] font-black text-white">
+                <span className={`absolute inset-0 flex items-center justify-center text-[10px] sm:text-[11px] font-black hud-text-shadow ${scoreTextClass(latest.result.deliveryScore)}`}>
                   {latest.result.deliveryScore}
                 </span>
               </div>
-              <span className="text-xs font-bold text-white/80">Score</span>
+              {scoreDelta !== null && scoreDelta !== 0 && (
+                <span className={`hidden sm:inline text-[10px] font-bold ${scoreDelta > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {scoreDelta > 0 ? "↑" : "↓"}{Math.abs(scoreDelta)}
+                </span>
+              )}
             </div>
           )}
 
-          {isScreenShare
-            ? <button onClick={switchToCamera} className={G_BTN}>📷 Camera</button>
-            : <button onClick={startScreenShare} className={G_BTN}>🖥 Screen</button>
-          }
-          <button onClick={clearTranscript} disabled={!transcript && !manualText}
-            className={`${G_BTN} disabled:opacity-30 disabled:cursor-not-allowed`}>
-            Clear
-          </button>
-          <button onClick={stopLive}
-            className="bg-red-500/20 backdrop-blur-xl border border-red-500/30 rounded-full px-3.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/30 hover:text-red-200 transition-all duration-150 cursor-pointer">
-            ■ Stop
+          {/* Overflow menu */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="More options"
+              aria-expanded={menuOpen}
+              className={`${G_BTN} w-10 h-10 sm:w-9 sm:h-9 flex items-center justify-center px-0 touch-manipulation`}
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="19" cy="12" r="2" />
+              </svg>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-black/80 backdrop-blur-xl border border-white/10 py-1 shadow-xl z-30">
+                <button
+                  onClick={() => { setFocusMode((v) => !v); setMenuOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  {focusMode ? "Show all panels" : "Focus mode"}
+                </button>
+                <button
+                  onClick={() => { isScreenShare ? switchToCamera() : void startScreenShare(); }}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                >
+                  {isScreenShare ? "Switch to camera" : "Share screen"}
+                </button>
+                <button
+                  onClick={clearTranscript}
+                  disabled={!transcript && !manualText}
+                  className="w-full text-left px-4 py-2.5 text-xs font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Clear transcript
+                </button>
+                {hasSpeech && (
+                  <button
+                    onClick={() => { setTranscriptExpanded((v) => !v); setMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-xs font-semibold text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+                  >
+                    {transcriptExpanded ? "Collapse transcript" : "Expand transcript"}
+                  </button>
+                )}
+                {IS_DEV && (
+                  <div className="px-4 py-2.5 text-[10px] font-mono text-white/40 border-t border-white/10 mt-1">
+                    {reqCount}/1500 daily
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={stopLive}
+            className="bg-red-500/15 backdrop-blur-sm border border-red-400/35 rounded-full px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold text-red-200 hover:bg-red-500/25 hover:text-red-100 transition-all duration-150 cursor-pointer hud-text-shadow touch-manipulation min-h-[40px] sm:min-h-0"
+          >
+            Stop
           </button>
         </div>
       </div>
 
-      {/* ══ PRIMARY CUE — center-left ════════════════════════════════════ */}
-      <div className="absolute left-6 top-1/2 -translate-y-1/2 max-w-[42vw]">
-        {displayCue ? (
-          <div className={`p-5 ${G_CARD}`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-2">
-              {streamingCue ? "⚡ Streaming" : "Coach"}
-            </p>
-            <p className="text-2xl sm:text-3xl font-black text-white leading-tight font-display">
-              {displayCue}
-              {/* Blinking cursor while streaming */}
-              {streamingCue && (
-                <span className="inline-block w-0.5 h-7 bg-primary ml-0.5 animate-pulse align-bottom" />
-              )}
-            </p>
+      {/* ══ COACHING ZONE — top, below controls (in natural glance path) ══ */}
+      <div className="absolute top-[calc(3.25rem+env(safe-area-inset-top,0px))] sm:top-[52px] left-0 right-0 z-10 flex flex-col items-center gap-2 px-3 sm:px-5 w-full max-w-3xl mx-auto pointer-events-none">
+        {/* Clarity warning — prominent at top when something is off */}
+        {showWarningToast && (
+          <div className="pointer-events-auto hud-glass-warn flex items-start sm:items-center gap-2 w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl animate-cue-fade-in">
+            <svg className="h-4 w-4 shrink-0 text-amber-300 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+            <p className="flex-1 text-xs sm:text-sm font-bold text-amber-100 leading-snug hud-text-shadow-strong">{latest!.result.clarityWarning}</p>
+            <button
+              onClick={() => setWarningVisible(false)}
+              className="shrink-0 text-amber-300/60 hover:text-amber-200 pointer-events-auto"
+              aria-label="Dismiss warning"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-        ) : (
-          <div className={`p-5 ${G_CARD} opacity-50`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">Coach</p>
-            <p className="text-xl font-bold text-white/40">
-              {isThinking ? "Analyzing…" : "First cue in ~4 seconds…"}
+        )}
+
+        {/* Hero cue — main fix, easy to read while looking at camera */}
+        <div
+          className={`w-full hud-glass border-l-4 border-l-primary rounded-xl sm:rounded-2xl px-3.5 py-3 sm:px-6 sm:py-5 ${
+            streamingCue ? "border-l-primary/70 animate-pulse" : ""
+          }`}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-1.5 flex items-center gap-1.5 hud-text-shadow">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse drop-shadow-md" />
+            Fix this now
+          </p>
+
+          {displayCue ? (
+            <p
+              key={cueAnimKey}
+              aria-live="polite"
+              aria-atomic="true"
+              className="text-lg sm:text-2xl lg:text-3xl font-black text-white leading-snug sm:leading-tight font-display animate-cue-fade-in hud-text-shadow-strong"
+            >
+              {displayCue}
             </p>
+          ) : (
+            <p className="text-lg sm:text-xl font-bold text-white/80 hud-text-shadow">
+              {isThinking ? "Listening…" : "Feedback appears here in a few seconds…"}
+            </p>
+          )}
+
+          {latest?.result.nextBestAction && !focusMode && (
+            <p className="mt-2 text-xs sm:text-sm font-semibold text-white/90 leading-snug border-t border-white/15 pt-2 sm:pt-2.5 hud-text-shadow">
+              <span className="text-primary font-bold">Then:</span>{" "}
+              {latest.result.nextBestAction}
+            </p>
+          )}
+        </div>
+
+        {/* Quick tip chips */}
+        {!focusMode && quickTips.length > 0 && (
+          <div className="w-full overflow-x-auto overscroll-x-contain touch-pan-x -mx-1 px-1">
+            <div className="flex items-center gap-2 min-w-min pb-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/70 shrink-0 hud-text-shadow">
+                Also try
+              </span>
+              {quickTips.map((tip, i) => (
+                <span
+                  key={i}
+                  className="shrink-0 px-2.5 sm:px-3 py-1.5 hud-glass-chip rounded-full text-xs sm:text-sm font-semibold text-white hud-text-shadow whitespace-nowrap"
+                >
+                  {tip}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {/* ══ RIGHT PANEL — bubbles (top) + next action (bottom) ══════════ */}
-      {latest && (
-        <div className="absolute right-6 top-20 bottom-[88px] flex flex-col gap-2.5 max-w-[200px] sm:max-w-[220px] overflow-hidden">
-          {/* Coaching bubbles — stack from top */}
-          {latest.result.coachingBubbles.map((bubble, i) => (
-            <div key={i} className={`px-4 py-2.5 ${G_SM} shrink-0`}>
-              <p className="text-sm font-semibold text-white/90 leading-snug">{bubble}</p>
-            </div>
-          ))}
-
-          {/* Spacer pushes next action to bottom */}
-          <div className="flex-1" />
-
-          {/* Next best action pinned at bottom of right panel */}
-          <div className={`p-4 ${G_CARD} shrink-0`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-1.5">Next</p>
-            <p className="text-sm font-bold text-white leading-snug">{latest.result.nextBestAction}</p>
-          </div>
-        </div>
-      )}
-
-      {/* ══ CLARITY WARNING — bottom-center-left ═════════════════════════ */}
-      {latest && (
-        <div className="absolute bottom-[88px] left-6 max-w-[38vw]">
-          <div className={`px-4 py-2.5 ${G_CARD}`}>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400 mb-1">Warning</p>
-            <p className="text-xs font-semibold text-white/80 leading-snug">{latest.result.clarityWarning}</p>
-          </div>
-        </div>
-      )}
-
       {/* ══ BOTTOM TRANSCRIPT BAR ════════════════════════════════════════ */}
-      <div className="absolute bottom-0 left-0 right-0 bg-black/55 backdrop-blur-xl border-t border-white/10">
-        <div className="flex items-center gap-3 px-5 py-3 min-h-[72px]">
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-white/30 self-start pt-0.5">
-            Transcript
-          </span>
-          <div className="flex-1 overflow-y-auto max-h-14">
-            {hasSpeech ? (
-              <p className="text-sm text-white/80 font-medium leading-relaxed">
-                {transcript
-                  ? <>{transcript}{interimText && <span className="text-white/35 italic"> {interimText}</span>}</>
-                  : <span className="text-white/25 italic font-normal">Start speaking…</span>
-                }
+      {!focusMode && (
+        <div className="absolute bottom-0 left-0 right-0 hud-glass border-t border-white/10 z-10 safe-bottom">
+          {transcriptCollapsed ? (
+            <button
+              onClick={() => setTranscriptExpanded(true)}
+              className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 w-full text-left hover:bg-white/5 transition-colors touch-manipulation min-h-[48px]"
+            >
+              <span className="shrink-0 flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-emerald-400/80">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Listening
+              </span>
+              <p className="flex-1 text-sm text-white/85 font-medium truncate hud-text-shadow">
+                {transcriptFull
+                  ? lastWords(transcriptFull, 12)
+                  : "Start speaking…"}
               </p>
-            ) : (
-              <input
-                type="text"
-                value={manualText}
-                onChange={(e) => { manualTextRef.current = e.target.value; setManualText(e.target.value); }}
-                placeholder="Type your pitch as you speak…"
-                className="w-full bg-transparent text-sm text-white/80 placeholder-white/25 focus:outline-none font-medium"
-              />
-            )}
-          </div>
+              <svg className="h-4 w-4 shrink-0 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-3 min-h-[56px] sm:min-h-[72px]">
+              {hasSpeech ? (
+                <>
+                  <span className="shrink-0 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-400/80 self-start pt-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Listening
+                  </span>
+                  <div className="flex-1 overflow-y-auto max-h-14">
+                    <p className="text-sm text-white/90 font-medium leading-relaxed hud-text-shadow">
+                      {transcript
+                        ? <>{transcript}{interimText && <span className="text-white/35 italic"> {interimText}</span>}</>
+                        : <span className="text-white/25 italic font-normal">Start speaking…</span>
+                      }
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setTranscriptExpanded(false)}
+                    className="shrink-0 text-white/30 hover:text-white/60 transition-colors self-start pt-0.5"
+                    aria-label="Collapse transcript"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-white/30 self-start pt-0.5">
+                    Type
+                  </span>
+                  <input
+                    type="text"
+                    value={manualText}
+                    onChange={(e) => { manualTextRef.current = e.target.value; setManualText(e.target.value); }}
+                    placeholder="Type your pitch as you speak…"
+                    className="flex-1 bg-transparent text-sm text-white/80 placeholder-white/25 focus:outline-none font-medium"
+                  />
+                </>
+              )}
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

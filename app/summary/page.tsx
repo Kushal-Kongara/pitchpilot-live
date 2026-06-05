@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import DeliveryScoreChart from "@/components/DeliveryScoreChart";
 import type { SessionData, SessionSummaryResult } from "@/lib/types";
 
 const SESSION_KEY = "pitchpilot_session";
+
+const LOADING_STEPS = [
+  "Reviewing your transcript…",
+  "Analyzing delivery & posture…",
+  "Mapping score trends…",
+  "Crafting your interview prep plan…",
+];
 
 // ── Score colour helpers ─────────────────────────────────────────────────────
 function scoreColor(n: number) {
@@ -28,6 +36,15 @@ export default function SummaryPage() {
   const [result, setResult] = useState<SessionSummaryResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    const id = setInterval(() => {
+      setLoadingStep((s) => (s + 1) % LOADING_STEPS.length);
+    }, 2200);
+    return () => clearInterval(id);
+  }, [loading]);
 
   useEffect(() => {
     // Read session from sessionStorage (written by LiveCoach on Stop)
@@ -80,7 +97,7 @@ export default function SummaryPage() {
   // ── No session data ──────────────────────────────────────────────────────
   if (!loading && (error === "no_session" || error === "corrupt")) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6 p-6 text-center">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-6 p-4 sm:p-6 text-center safe-x safe-bottom">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 border border-slate-200">
           <svg className="h-7 w-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
@@ -102,30 +119,112 @@ export default function SummaryPage() {
 
   // ── Nav shared by loading + result views ────────────────────────────────
   const Nav = () => (
-    <nav className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4 flex items-center justify-between">
-      <Link href="/" className="font-extrabold text-slate-900 tracking-tight">
+    <nav className="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 safe-top safe-x">
+      <Link href="/" className="font-extrabold text-slate-900 tracking-tight text-sm sm:text-base shrink-0">
         PitchPilot{" "}
         <span className="text-primary">Live</span>
       </Link>
-      <div className="flex items-center gap-4 text-xs font-semibold uppercase tracking-wider">
-        <Link href="/live" className="text-slate-500 hover:text-primary transition-colors">← New Session</Link>
-        <Link href="/practice" className="text-slate-500 hover:text-primary transition-colors">Deep Analysis</Link>
+      <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+        <Link href="/live" className="text-slate-500 hover:text-primary transition-colors whitespace-nowrap">← New</Link>
+        <Link href="/practice" className="text-slate-500 hover:text-primary transition-colors whitespace-nowrap hidden min-[380px]:inline">Deep Analysis</Link>
+        <Link href="/practice" className="text-slate-500 hover:text-primary transition-colors whitespace-nowrap min-[380px]:hidden">Analysis</Link>
       </div>
     </nav>
   );
 
   // ── Loading ──────────────────────────────────────────────────────────────
   if (loading) {
+    const loadingScores = sessionData?.coachingHistory.map((c) => c.deliveryScore) ?? [];
+    const loadingAvg = loadingScores.length > 0
+      ? Math.round(loadingScores.reduce((s, n) => s + n, 0) / loadingScores.length)
+      : null;
+
     return (
-      <div className="min-h-screen bg-white flex flex-col">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-primary/5 flex flex-col">
         <Nav />
-        <div className="flex-1 flex flex-col items-center justify-center gap-5 p-6">
-          <div className="relative h-14 w-14">
-            <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
-            <div className="absolute inset-0 rounded-full border-t-2 border-primary animate-spin" />
+        <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 safe-x">
+          <div className="w-full max-w-lg flex flex-col gap-4 sm:gap-6">
+
+            {/* Header card */}
+            <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-5 sm:p-8 shadow-lg shadow-slate-200/50 text-center">
+              <div className="absolute inset-0 summary-shimmer pointer-events-none" />
+              <div className="relative flex flex-col items-center gap-5">
+                <div className="relative h-20 w-20">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="34" stroke="#f1f5f9" strokeWidth="5" fill="none" />
+                    <circle
+                      cx="40" cy="40" r="34"
+                      stroke="#FFC82C" strokeWidth="5" fill="none"
+                      strokeDasharray={213.6}
+                      strokeDashoffset={53}
+                      strokeLinecap="round"
+                      className="animate-spin"
+                      style={{ animationDuration: "2.5s" }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-black text-primary font-display">AI</span>
+                  </div>
+                </div>
+
+                <div>
+                  <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 font-display mb-1 px-1">
+                    Generating your session summary
+                  </h1>
+                  <p
+                    key={loadingStep}
+                    className="text-sm text-slate-500 font-medium summary-step-active"
+                  >
+                    {LOADING_STEPS[loadingStep]}
+                  </p>
+                </div>
+
+                {sessionData && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span className="px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">{durationStr}</span>
+                    <span className="px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">
+                      {sessionData.coachingHistory.length} checkpoints
+                    </span>
+                    {loadingAvg !== null && (
+                      <span className="px-2.5 sm:px-3 py-1.5 rounded-full bg-primary/10 text-primary">
+                        avg {loadingAvg}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Progress steps */}
+                <div className="flex items-center gap-2 w-full max-w-xs">
+                  {LOADING_STEPS.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-all duration-500 ${
+                        i <= loadingStep ? "bg-primary" : "bg-slate-200"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Live score chart preview while generating */}
+            {loadingScores.length > 0 && (
+              <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3 text-center">
+                  Your delivery score so far
+                </p>
+                <DeliveryScoreChart
+                  scores={loadingScores}
+                  durationSeconds={sessionData?.durationSeconds}
+                  animated
+                  compact
+                />
+                <p className="text-[10px] text-slate-400 text-center mt-3 animate-pulse">
+                  Full analysis loading…
+                </p>
+              </div>
+            )}
           </div>
-          <p className="text-sm font-semibold text-slate-700 animate-pulse font-display">Generating your session debrief…</p>
-          <p className="text-xs text-slate-400">Gemini is reviewing your coaching history</p>
         </div>
       </div>
     );
@@ -164,34 +263,34 @@ export default function SummaryPage() {
       <Nav />
 
       {/* Header */}
-      <div className="border-b border-slate-100 px-6 py-8 lg:px-10 bg-slate-50/40">
+      <div className="border-b border-slate-100 px-4 sm:px-6 py-6 sm:py-8 lg:px-10 bg-slate-50/40 safe-x">
         <div className="max-w-3xl">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-bold text-primary">
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-bold text-primary">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
               Session Debrief
             </span>
             {sessionData && (
-              <span className="text-xs text-slate-400 font-medium">
+              <span className="text-[10px] sm:text-xs text-slate-400 font-medium">
                 {durationStr} · {sessionData.coachingHistory.length} checkpoints
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-2 font-display">Your Interview Prep Summary</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2 font-display">Your Interview Prep Summary</h1>
           <p className="text-sm text-slate-500 leading-relaxed max-w-xl">{result.readinessStatement}</p>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 px-6 py-10 lg:px-10">
-        <div className="max-w-3xl mx-auto flex flex-col gap-8">
+      <div className="flex-1 px-4 sm:px-6 py-6 sm:py-10 lg:px-10 safe-x pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-3xl mx-auto flex flex-col gap-5 sm:gap-8">
 
           {/* Score row */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {/* Final score */}
-            <div className={`rounded-2xl border p-5 flex flex-col gap-2 col-span-1 ${scoreBg(result.finalScore)}`}>
+            <div className={`rounded-2xl border p-4 sm:p-5 flex flex-col gap-2 ${scoreBg(result.finalScore)}`}>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Final Score</p>
-              <p className={`text-4xl font-black ${scoreColor(result.finalScore)}`}>{result.finalScore}</p>
+              <p className={`text-3xl sm:text-4xl font-black ${scoreColor(result.finalScore)}`}>{result.finalScore}</p>
               <div className="h-1.5 w-full rounded-full bg-white/60">
                 <div className={`h-1.5 rounded-full ${scoreBar(result.finalScore)} transition-all duration-700`} style={{ width: `${result.finalScore}%` }} />
               </div>
@@ -199,31 +298,45 @@ export default function SummaryPage() {
 
             {/* Avg score from history */}
             {avgScoreFromHistory !== null && (
-              <div className={`rounded-2xl border p-5 flex flex-col gap-2 ${scoreBg(avgScoreFromHistory)}`}>
+              <div className={`rounded-2xl border p-4 sm:p-5 flex flex-col gap-2 ${scoreBg(avgScoreFromHistory)}`}>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Avg Delivery</p>
-                <p className={`text-4xl font-black ${scoreColor(avgScoreFromHistory)}`}>{avgScoreFromHistory}</p>
+                <p className={`text-3xl sm:text-4xl font-black ${scoreColor(avgScoreFromHistory)}`}>{avgScoreFromHistory}</p>
                 <p className="text-[10px] text-slate-400">across {sessionData?.coachingHistory.length} check-ins</p>
               </div>
             )}
 
             {/* Ready for Interview */}
-            <div className={`rounded-2xl border p-5 flex flex-col gap-2 ${result.readyForDemo ? "bg-emerald-50 border-emerald-200" : "bg-primary/5 border-primary/20"}`}>
+            <div className={`rounded-2xl border p-4 sm:p-5 flex flex-col gap-2 min-[420px]:col-span-2 lg:col-span-1 ${result.readyForDemo ? "bg-emerald-50 border-emerald-200" : "bg-primary/5 border-primary/20"}`}>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Interview Ready</p>
-              <p className={`text-3xl font-black ${result.readyForDemo ? "text-emerald-600" : "text-primary"}`}>
+              <p className={`text-2xl sm:text-3xl font-black ${result.readyForDemo ? "text-emerald-600" : "text-primary"}`}>
                 {result.readyForDemo ? "Yes ✓" : "Not yet"}
               </p>
             </div>
           </div>
 
+          {/* Delivery score graph */}
+          {sessionData && sessionData.coachingHistory.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm overflow-hidden">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">
+                Delivery Score Across Session
+              </p>
+              <DeliveryScoreChart
+                scores={sessionData.coachingHistory.map((c) => c.deliveryScore)}
+                durationSeconds={sessionData.durationSeconds}
+                animated
+              />
+            </div>
+          )}
+
           {/* Overall progress */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Overall Progress</p>
             <p className="text-sm text-slate-700 leading-relaxed font-medium">{result.overallProgress}</p>
           </div>
 
           {/* Strengths + Weaknesses */}
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 mb-3">Top Strengths</p>
               <ul className="flex flex-col gap-2">
                 {result.topStrengths.map((s, i) => (
@@ -235,7 +348,7 @@ export default function SummaryPage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-red-600 mb-3">Persistent Weaknesses</p>
               <ul className="flex flex-col gap-2">
                 {result.persistentWeaknesses.map((w, i) => (
@@ -249,7 +362,7 @@ export default function SummaryPage() {
           </div>
 
           {/* Improved pitch */}
-          <div className="rounded-2xl border-l-4 border-l-primary border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-2xl border-l-4 border-l-primary border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Improved 30-Second Response</p>
             <p className="text-sm text-slate-900 leading-relaxed font-bold italic">
               &ldquo;{result.improvedPitch}&rdquo;
@@ -263,7 +376,7 @@ export default function SummaryPage() {
           </div>
 
           {/* Priority fixes */}
-          <div className="rounded-2xl border border-slate-950 bg-slate-950 p-6">
+          <div className="rounded-2xl border border-slate-950 bg-slate-950 p-4 sm:p-6">
             <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300 mb-4">Priority Fixes Before Interview Day</p>
             <ol className="flex flex-col gap-3">
               {result.priorityFixes.map((fix, i) => (
@@ -277,35 +390,17 @@ export default function SummaryPage() {
             </ol>
           </div>
 
-          {/* Score timeline (sparkline from history) */}
-          {sessionData && sessionData.coachingHistory.length > 1 && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Delivery Score Over Session</p>
-              <div className="flex items-end gap-2 h-16">
-                {sessionData.coachingHistory.map((c, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className={`w-full rounded-sm transition-all duration-500 ${scoreBar(c.deliveryScore)}`}
-                      style={{ height: `${(c.deliveryScore / 100) * 52}px`, minHeight: "4px" }}
-                    />
-                    <span className="text-[8px] text-slate-400 font-bold">{c.deliveryScore}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Link
               href="/live"
-              className="flex-1 text-center rounded-xl bg-primary hover:bg-primary-hover py-3.5 text-sm font-bold text-white transition-all duration-200 hover:scale-[1.02] shadow-sm font-display tracking-wider uppercase text-xs"
+              className="flex-1 text-center rounded-xl bg-primary hover:bg-primary-hover py-4 sm:py-3.5 text-xs font-bold text-white transition-all duration-200 hover:scale-[1.02] shadow-sm font-display tracking-wider uppercase min-h-[48px] flex items-center justify-center"
             >
               Practice Again
             </Link>
             <Link
               href="/practice"
-              className="flex-1 text-center rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 py-3.5 text-sm font-bold text-slate-700 transition-all duration-200 font-display tracking-wider uppercase text-xs"
+              className="flex-1 text-center rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 py-4 sm:py-3.5 text-xs font-bold text-slate-700 transition-all duration-200 font-display tracking-wider uppercase min-h-[48px] flex items-center justify-center"
             >
               Deep Analysis Mode
             </Link>

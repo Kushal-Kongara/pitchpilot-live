@@ -27,8 +27,134 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe-area helpers for notched phones */
+.safe-top {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+}
+
+.safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.safe-x {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
 }
 
 h1, h2, h3, .font-display {
   font-family: var(--font-space-grotesk), Arial, Helvetica, sans-serif;
+}
+
+@keyframes cueFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-cue-fade-in {
+  animation: cueFadeIn 0.3s ease-out both;
+}
+
+/* HUD overlays — light glass so video stays visible, text stays legible */
+.hud-glass {
+  background: rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hud-glass-warn {
+  background: rgba(245, 158, 11, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.hud-glass-chip {
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.hud-text-shadow {
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.95),
+    0 2px 10px rgba(0, 0, 0, 0.75);
+}
+
+.hud-text-shadow-strong {
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 1),
+    0 4px 16px rgba(0, 0, 0, 0.85),
+    0 0 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Summary delivery score chart animations */
+@keyframes chartLineDraw {
+  from { stroke-dashoffset: 600; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes chartAreaFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes chartDotPop {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.delivery-chart-line {
+  stroke-dasharray: 600;
+  animation: chartLineDraw 1.2s ease-out forwards;
+}
+
+.delivery-chart-area {
+  animation: chartAreaFade 1s ease-out 0.3s both;
+}
+
+.delivery-chart-dot {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: chartDotPop 0.4s ease-out both;
+}
+
+@keyframes summaryPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes summaryShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.summary-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 200, 44, 0.08) 0%,
+    rgba(255, 200, 44, 0.25) 50%,
+    rgba(255, 200, 44, 0.08) 100%
+  );
+  background-size: 200% 100%;
+  animation: summaryShimmer 2s ease-in-out infinite;
+}
+
+@keyframes stepFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.summary-step-active {
+  animation: stepFade 0.4s ease-out both;
 }
